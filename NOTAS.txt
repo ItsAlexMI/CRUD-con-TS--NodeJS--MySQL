@@ -1,0 +1,96 @@
+++++++routes/usuarios.routes.ts++++++:
+
+Este código importa el objeto `Router` de Express y varios controladores de usuarios desde un archivo llamado "usuarios.controllers". Luego, crea una instancia de `Router` llamada `router`.
+
+El `router` se utiliza para definir rutas y asociarlas con las funciones de controlador correspondientes. Aquí se definen las siguientes rutas:
+
+- `GET /`: Asocia la ruta raíz con la función `getUsuarios` del controlador de usuarios.
+- `GET /:id`: Asocia una ruta con un parámetro `id` variable con la función `getUsuario` del controlador de usuarios.
+- `POST /`: Asocia la ruta raíz con la función `postUsuarios` del controlador de usuarios.
+- `PUT /:id`: Asocia una ruta con un parámetro `id` variable con la función `putUsuario` del controlador de usuarios.
+- `DELETE /:id`: Asocia una ruta con un parámetro `id` variable con la función `deleteUsuario` del controlador de usuarios.
+
+Estas rutas son utilizadas para definir la API RESTful para operaciones relacionadas con usuarios, como obtener una lista de usuarios, obtener un usuario específico por su ID, crear un nuevo usuario, actualizar un usuario existente y eliminar un usuario.
+
+++++++app.ts++++++
+
+Este código realiza las siguientes acciones:
+
+1. Importa el módulo `dotenv` que se utiliza para cargar variables de entorno desde un archivo `.env`.
+2. Importa la clase `Server` desde el archivo `server.js` (o cualquier otro archivo llamado `server` dentro de la carpeta `models`).
+3. Ejecuta `dotenv.config()` para cargar las variables de entorno definidas en el archivo `.env` en el entorno de la aplicación.
+4. Crea una instancia de la clase `Server` llamada `server`.
+5. Llama al método `listen()` en la instancia del servidor para iniciar la escucha de solicitudes HTTP en el puerto especificado en las variables de entorno o en una configuración predeterminada.
+
+En resumen, este código carga las variables de entorno, crea una instancia de un servidor y lo pone en funcionamiento para escuchar solicitudes entrantes.
+
+++++++models/server.ts++++++:
+
+Este código define la clase `Server`, que representa el servidor de la aplicación. Aquí está el desglose de lo que hace:
+
+- Importa el módulo `express` y la interfaz `Application` desde el paquete "express".
+- Importa el módulo `db` desde un archivo llamado "connect" en la carpeta "database".
+- Importa el módulo `cors` para habilitar el Cross-Origin Resource Sharing (Compartir recursos entre orígenes).
+- Importa las rutas de usuarios desde un archivo llamado "usuarios.routes".
+- Define la clase `Server`.
+- Declara las propiedades `app` (de tipo `Application`), `port` (de tipo `string`) y `apiRoutes` (un objeto con una propiedad llamada `usuarios` que tiene el valor "/api/usuarios").
+- El constructor de la clase `Server` configura el servidor de la siguiente manera:
+  - Crea una instancia de la aplicación Express y la asigna a la propiedad `app`.
+  - Define el puerto en el que se ejecutará el servidor, obteniendo el valor de la variable de entorno `PORT` o utilizando el valor predeterminado "8000".
+  - Llama al método `dbConnect()` para establecer una conexión con la base de datos utilizando el módulo `db`.
+  - Llama al método `middleware()` para configurar los middleware de la aplicación.
+  - Llama al método `routes()` para configurar las rutas de la aplicación.
+- El método `dbConnect()` intenta autenticarse con la base de datos utilizando el método `authenticate()` del objeto `db`. Si la autenticación es exitosa, imprime "DataBase online". Si hay algún error, lanza una excepción.
+- El método `middleware()` configura los middleware de la aplicación:
+  - Utiliza el middleware `cors()` para permitir solicitudes de origen cruzado (Cross-Origin).
+  - Utiliza el middleware `express.json()` para analizar el cuerpo de las solicitudes entrantes en formato JSON.
+  - Utiliza el middleware `express.static()` para servir archivos estáticos desde la carpeta "public".
+- El método `routes()` configura las rutas de la aplicación, asignando las rutas de usuarios al middleware `userRoutes` a través de `app.use()`.
+- El método `listen()` inicia el servidor para escuchar en el puerto especificado. Imprime un mensaje en la consola indicando que el servidor está en funcionamiento.
+
+En resumen, esta clase configura un servidor Express, establece una conexión con la base de datos, configura middleware y rutas, y luego inicia el servidor para escuchar solicitudes entrantes en el puerto especificado.
+
+++++++models/usuario.ts++++++:
+
+Este código define un modelo de datos llamado "Usuario" utilizando la biblioteca Sequelize y el objeto `db` (que representa la conexión a la base de datos). Aquí está el desglose de lo que hace:
+
+- Importa el objeto `DataTypes` desde el paquete 'sequelize'.
+- Importa el objeto `db` desde un archivo llamado "connect" en la carpeta "database".
+- Define el modelo de datos "Usuario" utilizando el método `define()` del objeto `db`.
+- El modelo "Usuario" tiene tres campos: "nombre" de tipo `STRING`, "email" de tipo `STRING`, y "estado" de tipo `BOOLEAN`.
+- El método `define()` devuelve una instancia del modelo "Usuario".
+- Exporta el modelo "Usuario" como un valor predeterminado (`export default Usuario`).
+
+En resumen, este código define un modelo "Usuario" utilizando Sequelize con tres campos: "nombre", "email" y "estado". Este modelo puede ser utilizado para interactuar con la tabla "usuarios" en la base de datos a través de las operaciones CRUD (crear, leer, actualizar y eliminar).
+
+++++++database/connect++++++:
+
+Este código crea una instancia de Sequelize para establecer una conexión con una base de datos MySQL. Aquí está el desglose de lo que hace:
+
+- Importa el objeto `Sequelize` desde el paquete "sequelize".
+- Crea una instancia de Sequelize llamada `db`, pasando los siguientes parámetros:
+  - El nombre de la base de datos: `'node'`.
+  - El nombre de usuario de la base de datos: `'root'`.
+  - La contraseña de la base de datos: `''` (cadena vacía, en este caso no se especifica una contraseña).
+  - Un objeto de opciones que contiene el host de la base de datos (`'localhost'`) y el dialecto de la base de datos (`'mysql'`).
+- Exporta la instancia de Sequelize `db` como un valor predeterminado (`export default db`).
+
+En resumen, este código crea una instancia de Sequelize con la configuración necesaria para establecer una conexión con una base de datos MySQL. La instancia `db` se puede utilizar para realizar operaciones de base de datos utilizando los modelos definidos y los métodos proporcionados por Sequelize.
+
+++++++controllers/usuarios.controllers.ts++++++:
+
+Estas son las funciones controladoras que se utilizan para manejar las diferentes rutas relacionadas con los usuarios en una aplicación Express. Aquí está el desglose de lo que hace cada función:
+
+- `getUsuarios`: Maneja la solicitud para obtener todos los usuarios. Utiliza el modelo `Usuario` para llamar al método `findAll()` y obtiene todos los usuarios de la base de datos. Luego, responde con una respuesta JSON que contiene la lista de usuarios.
+
+- `getUsuario`: Maneja la solicitud para obtener un usuario específico por su ID. Extrae el parámetro `id` de `req.params`. Utiliza el modelo `Usuario` para llamar al método `findByPk()` y busca un usuario con el ID proporcionado. Si se encuentra el usuario, responde con una respuesta JSON que contiene el usuario encontrado. Si no se encuentra el usuario, responde con un código de estado 404 y un mensaje indicando que no se encontró el usuario.
+
+- `postUsuarios`: Maneja la solicitud para crear un nuevo usuario. Extrae el cuerpo de la solicitud de `req.body`. Primero verifica si ya existe un usuario con el mismo correo electrónico utilizando el método `findOne()` del modelo `Usuario`. Si se encuentra un usuario con el mismo correo electrónico, responde con un código de estado 400 y un mensaje indicando que el correo electrónico ya está en uso. Si no se encuentra un usuario con el mismo correo electrónico, crea un nuevo usuario utilizando el método `create()` del modelo `Usuario` y responde con un código de estado 200 y un mensaje indicando que el registro se agregó correctamente.
+
+- `putUsuario`: Maneja la solicitud para actualizar un usuario existente. Extrae el parámetro `id` de `req.params` y el cuerpo de la solicitud de `req.body`. Utiliza el método `findByPk()` del modelo `Usuario` para buscar un usuario con el ID proporcionado. Si se encuentra el usuario, llama al método `update()` en el objeto de usuario encontrado y pasa el cuerpo de la solicitud para realizar la actualización. Responde con un código de estado 200 y un mensaje indicando que el registro se actualizó correctamente. Si no se encuentra el usuario, responde con un código de estado 404 y un mensaje indicando que no se encontró el usuario.
+
+- `deleteUsuario`: Maneja la solicitud para eliminar un usuario. Extrae el parámetro `id` de `req.params`. Utiliza el método `findByPk()` del modelo `Usuario` para buscar un usuario con el ID proporcionado. Si se encuentra el usuario, llama al método `destroy()` en el objeto de usuario encontrado para eliminar el registro de la base de datos. Responde con un código de estado 200 y un mensaje indicando que el registro se eliminó correctamente. Si no se encuentra el usuario, responde con un código de estado 404 y un mensaje indicando que no se encontró el usuario.
+
+En resumen, estas funciones controladoras implementan la lógica para manejar las solicitudes relacionadas con los usuarios, como obtener todos los usuarios, obtener un usuario por su ID, crear un nuevo usuario, actualizar un usuario existente y eliminar un usuario.
+
++++++ /dist son los JS que generan nuestros archivos TS, /public es donde mostramos nuestros HTML y el resto son archivos de configuracion para la realizacion de este trabajo+++++

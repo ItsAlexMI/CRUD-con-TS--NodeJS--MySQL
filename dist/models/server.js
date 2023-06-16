@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Server = void 0;
+exports.Server2 = exports.Server = void 0;
 const express_1 = __importDefault(require("express"));
 const connect_1 = __importDefault(require("../database/connect"));
 const cors_1 = __importDefault(require("cors"));
@@ -57,4 +57,29 @@ class Server {
     }
 }
 exports.Server = Server;
+class Server2 {
+    constructor() {
+        this.app = (0, express_1.default)();
+        this.port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+        // Configurar middlewares y rutas
+        this.configureMiddlewares();
+        this.configureRoutes();
+    }
+    configureMiddlewares() {
+        this.app.use((0, cors_1.default)());
+        //Leer del body
+        this.app.use(express_1.default.json());
+        //Carpeta publica
+        this.app.use(express_1.default.static('public'));
+    }
+    configureRoutes() {
+        this.app.use(this.apiRoutes.usuarios, usuarios_routes_1.default);
+    }
+    listen() {
+        this.app.listen(this.port, () => {
+            console.log(`Servidor en funcionamiento en http://localhost:${this.port}`);
+        });
+    }
+}
+exports.Server2 = Server2;
 //# sourceMappingURL=server.js.map

@@ -70,18 +70,28 @@ app.post('/register', (req: Request, res: Response) => {
   // Obtener los datos del formulario de registro
   const { username, password, role } = req.body;
 
-  // Insertar los datos en la tabla usuarios
-  db.run(`INSERT INTO usuarios (username, password, role) VALUES (?, ?, ?)`, [username, password, role], (error) => {
+  // Verificar si el usuario ya existe
+  db.get(`SELECT * FROM usuarios WHERE username = ?`, [username], (error, row) => {
     if (error) {
-      console.error('Error al insertar los datos:', error.message);
+      console.error('Error al consultar los datos:', error.message);
       res.status(500).json({ error: 'Error al registrar el usuario' });
+    } else if (row) {
+      // Si el usuario ya existe, enviar una respuesta con un mensaje de error
+      res.status(400).json({ error: 'El usuario ya existe' });
     } else {
-      console.log('Datos insertados exitosamente');
-      res.status(200).json({ message: 'Usuario registrado exitosamente' });
+      // Insertar los datos en la tabla usuarios
+      db.run(`INSERT INTO usuarios (username, password, role) VALUES (?, ?, ?)`, [username, password, role], (error) => {
+        if (error) {
+          console.error('Error al insertar los datos:', error.message);
+          res.status(500).json({ error: 'Error al registrar el usuario' });
+        } else {
+          console.log('Datos insertados exitosamente');
+          res.status(200).json({ message: 'Usuario registrado exitosamente' });
+        }
+      });
     }
   });
 });
-
 // Ruta para iniciar sesión
 app.post('/', (req: Request, res: Response) => {
   // Obtener los datos del formulario de inicio de sesión

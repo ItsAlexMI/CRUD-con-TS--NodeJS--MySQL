@@ -100,7 +100,7 @@
         const password = document.getElementById('password').value;
         const confirmPassword = document.getElementById('confirmPassword').value;
         const role = document.getElementById('role').value;
-
+    
         // Validar los campos (puedes agregar más validaciones según tus necesidades)
         if (username.trim() === '') {
           alert('Ingrese un nombre de usuario válido');
@@ -118,7 +118,7 @@
           alert('Seleccione un rol válido');
           return;
         }
-
+    
         // Enviar los datos al servidor mediante una solicitud HTTP (puedes usar fetch, axios, etc.)
         fetch('/register', {
           method: 'POST',
@@ -131,10 +131,14 @@
             role: role
           })
         })
-        .then(response => response.json())
-        .then(data => {
-          // Manejar la respuesta del servidor
-          console.log(data); // Aquí puedes realizar alguna acción después del registro exitoso
+        .then(response => {
+          if (response.ok) {
+            // Registro exitoso
+            alert('Usuario registrado exitosamente');
+          } else {
+            // Mostrar mensaje de error si el usuario ya existe
+            response.json().then(data => alert(data.error));
+          }
         })
         .catch(error => {
           console.error('Error en la solicitud:', error);
@@ -142,6 +146,7 @@
         });
       }
     </script>
+    
 
 </body>
 </html>

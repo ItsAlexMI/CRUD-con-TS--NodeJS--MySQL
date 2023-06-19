@@ -70,6 +70,34 @@ app.post('/register', (req, res) => {
         }
     });
 });
+// Ruta para iniciar sesión
+app.post('/', (req, res) => {
+    // Obtener los datos del formulario de inicio de sesión
+    const { username, password } = req.body;
+    // Verificar si los datos existen en la base de datos
+    db.get(`SELECT role FROM usuarios WHERE username = ? AND password = ?`, [username, password], (error, row) => {
+        if (error) {
+            console.error('Error al consultar los datos:', error.message);
+            res.status(500).json({ error: 'Error al iniciar sesión' });
+        }
+        else if (row) {
+            const role = row.role;
+            // Redireccionar al usuario según su rol
+            if (role === 'Estudiante') {
+                res.redirect('/student');
+            }
+            else if (role === 'Profesor') {
+                res.redirect('/teacher');
+            }
+            else {
+                res.status(401).json({ error: 'Rol de usuario inválido' });
+            }
+        }
+        else {
+            res.status(401).json({ error: 'Credenciales inválidas' });
+        }
+    });
+});
 // Cerrar la conexión cuando hayas terminado
 app.on('close', () => {
     db.close((error) => {

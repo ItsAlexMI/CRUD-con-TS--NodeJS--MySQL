@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 import { Server } from './models/server';
-import express from 'express';
+import express, { Request, Response } from 'express';
 import sqlite3 from 'sqlite3';
 import path from 'path';
 
@@ -18,19 +18,19 @@ app.set('views', path.join(__dirname, 'public')); // Establecer el directorio de
 app.set('view engine', 'ejs'); // Establecer el motor de vistas como "ejs"
 
 // Ruta principal
-app.get('/', (req, res) => {
+app.get('/', (req: Request, res: Response) => {
   res.render('login', { title: 'Inicio de sesión' });
 });
 
-app.get('/register', (req, res) => {
+app.get('/register', (req: Request, res: Response) => {
   res.render('register', { title: 'Registro' });
 });
 
-app.get('/student', (req, res) => {
+app.get('/student', (req: Request, res: Response) => {
   res.render('student', { title: 'Estudiante' });
 });
 
-app.get('/teacher', (req, res) => {
+app.get('/teacher', (req: Request, res: Response) => {
   res.render('teacher', { title: 'Profesor' });
 });
 
@@ -59,8 +59,14 @@ db.run(`CREATE TABLE IF NOT EXISTS usuarios (
   }
 });
 
+// Define una interfaz para describir la estructura de la fila de la base de datos
+interface UsuarioRow {
+  role: string;
+  // Otras propiedades de la fila si las hay
+}
+
 // Ruta para registrar un usuario
-app.post('/register', (req, res) => {
+app.post('/register', (req: Request, res: Response) => {
   // Obtener los datos del formulario de registro
   const { username, password, role } = req.body;
 
@@ -72,6 +78,33 @@ app.post('/register', (req, res) => {
     } else {
       console.log('Datos insertados exitosamente');
       res.status(200).json({ message: 'Usuario registrado exitosamente' });
+    }
+  });
+});
+
+// Ruta para iniciar sesión
+app.post('/', (req: Request, res: Response) => {
+  // Obtener los datos del formulario de inicio de sesión
+  const { username, password } = req.body;
+
+  // Verificar si los datos existen en la base de datos
+  db.get(`SELECT role FROM usuarios WHERE username = ? AND password = ?`, [username, password], (error, row: UsuarioRow) => {
+    if (error) {
+      console.error('Error al consultar los datos:', error.message);
+      res.status(500).json({ error: 'Error al iniciar sesión' });
+    } else if (row) {
+      const role = row.role;
+
+      // Redireccionar al usuario según su rol
+      if (role === 'Estudiante') {
+        res.redirect('/student');
+      } else if (role === 'Profesor') {
+        res.redirect('/teacher');
+      } else {
+        res.status(401).json({ error: 'Rol de usuario inválido' });
+      }
+    } else {
+      res.status(401).json({ error: 'Credenciales inválidas' });
     }
   });
 });

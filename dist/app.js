@@ -25,10 +25,22 @@ app.get('/register', (req, res) => {
     res.render('register', { title: 'Registro' });
 });
 app.get('/student', (req, res) => {
-    res.render('student', { title: 'Estudiante' });
+    // Obtener el nombre de usuario correspondiente y asignarlo a la variable `username`
+    const username = req.query.username;
+    res.render('student', { title: 'Estudiante', username: username });
 });
 app.get('/teacher', (req, res) => {
-    res.render('teacher', { title: 'Profesor', username: req.query.username, groupCode: req.query.groupCode });
+    console.log(req.body);
+    db.all(`SELECT codigo FROM grupos`, (error, rows) => {
+        if (error) {
+            console.error('Error al obtener los grupos:', error.message);
+            res.status(500).json({ error: 'Error al obtener los grupos' });
+        }
+        else {
+            const groups = rows.map((row) => row.codigo);
+            res.render('teacher', { title: 'Profesor', username: req.query.username, groupCode: req.query.groupCode, groups: groups });
+        }
+    });
 });
 // Configuración de la base de datos SQLite
 const dbPath = path_1.default.join(__dirname, 'database.sqlite');
@@ -138,6 +150,7 @@ app.post('/', (req, res) => {
         }
     });
 });
+// Ruta para agregar un grupo de clase
 app.post('/group', (req, res) => {
     const { username, role } = req.body;
     // Obtener el ID del profesor

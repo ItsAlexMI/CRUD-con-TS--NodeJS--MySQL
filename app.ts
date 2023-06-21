@@ -1,216 +1,231 @@
-import dotenv from 'dotenv';
-import { Server } from './models/server';
-import express, { Request, Response } from 'express';
-import sqlite3 from 'sqlite3';
-import path from 'path';
+    import dotenv from 'dotenv';
+    import { Server } from './models/server';
+    import express, { Request, Response } from 'express';
+    import sqlite3 from 'sqlite3';
+    import path from 'path';
 
-dotenv.config();
+    dotenv.config();
 
-const server = new Server();
-server.listen();
+    const server = new Server();
+    server.listen();
 
-const app = express();
-const port = 3000;
+    const app = express();
+    const port = 3000;
 
-app.use(express.json());
-// Configuración de Express
-app.set('views', path.join(__dirname, 'public')); // Establecer el directorio de vistas como "public"
-app.set('view engine', 'ejs'); // Establecer el motor de vistas como "ejs"
+    app.use(express.json());
+    // Configuración de Express
+    app.set('views', path.join(__dirname, 'public')); // Establecer el directorio de vistas como "public"
+    app.set('view engine', 'ejs'); // Establecer el motor de vistas como "ejs"
 
-// Ruta principal
-app.get('/', (req: Request, res: Response) => {
-  res.render('login', { title: 'Inicio de sesión' });
-});
+    // Ruta principal
+    app.get('/', (req: Request, res: Response) => {
+      res.render('login', { title: 'Inicio de sesión' });
+    });
 
-app.get('/register', (req: Request, res: Response) => {
-  res.render('register', { title: 'Registro' });
-});
+    app.get('/register', (req: Request, res: Response) => {
+      res.render('register', { title: 'Registro' });
+    });
 
-app.get('/student', (req: Request, res: Response) => {
-  res.render('student', { title: 'Estudiante' });
-});
+    app.get('/student', (req: Request, res: Response) => {
+      // Obtener el nombre de usuario correspondiente y asignarlo a la variable `username`
+      const username = req.query.username;
 
-app.get('/teacher', (req: Request, res: Response) => {
-  res.render('teacher', { title: 'Profesor', username: req.query.username, groupCode: req.query.groupCode });
-});
+      res.render('student', { title: 'Estudiante', username: username });
+    });
 
-
-
-// Configuración de la base de datos SQLite
-const dbPath = path.join(__dirname, 'database.sqlite');
-
-const db = new sqlite3.Database(dbPath, (error) => {
-  if (error) {
-    console.error('Error al conectar a la base de datos SQLite:', error.message);
-  } else {
-    console.log('Conexión exitosa a la base de datos SQLite');
-  }
-});
-
-// Crear la tabla "usuarios" y "grupos" si no existen
-db.run(`CREATE TABLE IF NOT EXISTS usuarios (
-  id INTEGER PRIMARY KEY,
-  username TEXT,
-  password TEXT,
-  role TEXT
-)`, (error) => {
-  if (error) {
-    console.error('Error al crear la tabla usuarios:', error.message);
-  } else {
-    console.log('Tabla usuarios creada exitosamente');
-  }
-});
-
-db.run(`CREATE TABLE IF NOT EXISTS grupos (
-  id INTEGER PRIMARY KEY,
-  codigo TEXT,
-  profesor_id INTEGER,
-  FOREIGN KEY (profesor_id) REFERENCES usuarios (id)
-)`, (error) => {
-  if (error) {
-    console.error('Error al crear la tabla grupos:', error.message);
-  } else {
-    console.log('Tabla grupos creada exitosamente');
-  }
-});
-
-// Define una interfaz para describir la estructura de la fila de la base de datos
-interface UsuarioRow {
-  role: string;
-  id: number;
-
-  // Otras propiedades de la fila si las hay
-}
-
-// Ruta para registrar un usuario
-app.post('/register', (req: Request, res: Response) => {
-  // Obtener los datos del formulario de registro
-  const { username, password, role } = req.body;
-
-  // Verificar si el usuario ya existe
-  db.get(`SELECT * FROM usuarios WHERE username = ?`, [username], (error, row) => {
-    if (error) {
-      console.error('Error al consultar los datos:', error.message);
-      res.status(500).json({ error: 'Error al registrar el usuario' });
-    } else if (row) {
-      // Si el usuario ya existe, enviar una respuesta con un mensaje de error
-      res.status(400).json({ error: 'El usuario ya existe' });
-    } else {
-      // Insertar los datos en la tabla usuarios
-      db.run(`INSERT INTO usuarios (username, password, role) VALUES (?, ?, ?)`, [username, password, role], function (error) {
+    app.get('/teacher', (req: Request, res: Response) => {
+      console.log(req.body)
+      db.all<{ codigo: string }>(`SELECT codigo FROM grupos`, (error, rows) => {
         if (error) {
-          console.error('Error al insertar los datos:', error.message);
-          res.status(500).json({ error: 'Error al registrar el usuario' });
+          console.error('Error al obtener los grupos:', error.message);
+          res.status(500).json({ error: 'Error al obtener los grupos' });
         } else {
-          console.log('Datos insertados exitosamente');
-
-          // Si el rol es "Profesor", crear un grupo
-          if (role === 'Profesor') {
-            const profesorId = this.lastID;
-            const groupCode = generateGroupCode();
-
-            // Insertar los datos en la tabla grupos
-            db.run(`INSERT INTO grupos (codigo, profesor_id) VALUES (?, ?)`, [groupCode, profesorId], (error) => {
-              if (error) {
-                console.error('Error al insertar los datos del grupo:', error.message);
-              } else {
-                console.log('Grupo creado exitosamente');
-              }
-            });
-          }
-
-          res.status(200).json({ message: 'Usuario registrado exitosamente' });
+          const groups: string[] = rows.map((row) => row.codigo);
+          res.render('teacher', { title: 'Profesor', username: req.query.username, groupCode: req.query.groupCode, groups: groups });
         }
       });
-    }
-  });
-});
+    });
 
-// Ruta para iniciar sesión
-app.post('/', (req: Request, res: Response) => {
-  // Obtener los datos del formulario de inicio de sesión
-  const { username, password } = req.body;
 
-  // Verificar si los datos existen en la base de datos
-  db.get(`SELECT role FROM usuarios WHERE username = ? AND password = ?`, [username, password], (error, row: UsuarioRow) => {
-    if (error) {
-      console.error('Error al consultar los datos:', error.message);
-      res.status(500).json({ error: 'Error al iniciar sesión' });
-    } else if (row) {
-      const role = row.role;
 
-      // Redireccionar al usuario según su rol
-      if (role === 'Estudiante') {
-        res.redirect('/student');
-      } else if (role === 'Profesor') {
-        res.redirect('/teacher');
+
+
+    // Configuración de la base de datos SQLite
+    const dbPath = path.join(__dirname, 'database.sqlite');
+
+    const db = new sqlite3.Database(dbPath, (error) => {
+      if (error) {
+        console.error('Error al conectar a la base de datos SQLite:', error.message);
       } else {
-        res.status(401).json({ error: 'Rol de usuario inválido' });
+        console.log('Conexión exitosa a la base de datos SQLite');
       }
-    } else {
-      res.status(401).json({ error: 'Credenciales inválidas' });
+    });
+
+    // Crear la tabla "usuarios" y "grupos" si no existen
+    db.run(`CREATE TABLE IF NOT EXISTS usuarios (
+      id INTEGER PRIMARY KEY,
+      username TEXT,
+      password TEXT,
+      role TEXT
+    )`, (error) => {
+      if (error) {
+        console.error('Error al crear la tabla usuarios:', error.message);
+      } else {
+        console.log('Tabla usuarios creada exitosamente');
+      }
+    });
+
+    db.run(`CREATE TABLE IF NOT EXISTS grupos (
+      id INTEGER PRIMARY KEY,
+      codigo TEXT,
+      profesor_id INTEGER,
+      FOREIGN KEY (profesor_id) REFERENCES usuarios (id)
+    )`, (error) => {
+      if (error) {
+        console.error('Error al crear la tabla grupos:', error.message);
+      } else {
+        console.log('Tabla grupos creada exitosamente');
+      }
+    });
+
+    // Define una interfaz para describir la estructura de la fila de la base de datos
+    interface UsuarioRow {
+      role: string;
+      id: number;
+
+      // Otras propiedades de la fila si las hay
     }
-  });
-});
 
-app.post('/group', (req: Request, res: Response) => {
-  const { username, role } = req.body;
+    // Ruta para registrar un usuario
+    app.post('/register', (req: Request, res: Response) => {
+      // Obtener los datos del formulario de registro
+      const { username, password, role } = req.body;
 
-  // Obtener el ID del profesor
-  db.get(`SELECT id FROM usuarios WHERE username = ?`, [username], (error, row: UsuarioRow) => {
-    if (error) {
-      console.error('Error al consultar el ID del profesor:', error.message);
-      res.status(500).json({ error: 'Error al crear el grupo' });
-    } else if (row) {
-      const profesorId = row.id;
-
-      // Generar un código de grupo aleatorio
-      const groupCode = generateGroupCode();
-
-      // Insertar los datos en la tabla grupos
-      db.run(`INSERT INTO grupos (codigo, profesor_id) VALUES (?, ?)`, [groupCode, profesorId], (error) => {
+      // Verificar si el usuario ya existe
+      db.get(`SELECT * FROM usuarios WHERE username = ?`, [username], (error, row) => {
         if (error) {
-          console.error('Error al insertar los datos del grupo:', error.message);
-          res.status(500).json({ error: 'Error al crear el grupo' });
+          console.error('Error al consultar los datos:', error.message);
+          res.status(500).json({ error: 'Error al registrar el usuario' });
+        } else if (row) {
+          // Si el usuario ya existe, enviar una respuesta con un mensaje de error
+          res.status(400).json({ error: 'El usuario ya existe' });
         } else {
-          console.log('Grupo creado exitosamente');
-          res.json({ groupCode });
+          // Insertar los datos en la tabla usuarios
+          db.run(`INSERT INTO usuarios (username, password, role) VALUES (?, ?, ?)`, [username, password, role], function (error) {
+            if (error) {
+              console.error('Error al insertar los datos:', error.message);
+              res.status(500).json({ error: 'Error al registrar el usuario' });
+            } else {
+              console.log('Datos insertados exitosamente');
+
+              // Si el rol es "Profesor", crear un grupo
+              if (role === 'Profesor') {
+                const profesorId = this.lastID;
+                const groupCode = generateGroupCode();
+
+                // Insertar los datos en la tabla grupos
+                db.run(`INSERT INTO grupos (codigo, profesor_id) VALUES (?, ?)`, [groupCode, profesorId], (error) => {
+                  if (error) {
+                    console.error('Error al insertar los datos del grupo:', error.message);
+                  } else {
+                    console.log('Grupo creado exitosamente');
+                  }
+                });
+              }
+
+              res.status(200).json({ message: 'Usuario registrado exitosamente' });
+            }
+          });
         }
       });
-    } else {
-      res.status(400).json({ error: 'No se encontró el profesor' });
+    });
+
+    // Ruta para iniciar sesión
+    app.post('/', (req: Request, res: Response) => {
+      // Obtener los datos del formulario de inicio de sesión
+      const { username, password } = req.body;
+
+      // Verificar si los datos existen en la base de datos
+      db.get(`SELECT role FROM usuarios WHERE username = ? AND password = ?`, [username, password], (error, row: UsuarioRow) => {
+        if (error) {
+          console.error('Error al consultar los datos:', error.message);
+          res.status(500).json({ error: 'Error al iniciar sesión' });
+        } else if (row) {
+          const role = row.role;
+
+          // Redireccionar al usuario según su rol
+          if (role === 'Estudiante') {
+            res.redirect('/student');
+          } else if (role === 'Profesor') {
+            res.redirect('/teacher');
+          } else {
+            res.status(401).json({ error: 'Rol de usuario inválido' });
+          }
+        } else {
+          res.status(401).json({ error: 'Credenciales inválidas' });
+        }
+      });
+    });
+
+    // Ruta para agregar un grupo de clase
+    app.post('/group', (req: Request, res: Response) => {
+      const { username, role } = req.body;
+
+      // Obtener el ID del profesor
+      db.get(`SELECT id FROM usuarios WHERE username = ?`, [username], (error, row: UsuarioRow) => {
+        if (error) {
+          console.error('Error al consultar el ID del profesor:', error.message);
+          res.status(500).json({ error: 'Error al crear el grupo' });
+        } else if (row) {
+          const profesorId = row.id;
+
+          // Generar un código de grupo aleatorio
+          const groupCode = generateGroupCode();
+
+          // Insertar los datos en la tabla grupos
+          db.run(`INSERT INTO grupos (codigo, profesor_id) VALUES (?, ?)`, [groupCode, profesorId], (error) => {
+            if (error) {
+              console.error('Error al insertar los datos del grupo:', error.message);
+              res.status(500).json({ error: 'Error al crear el grupo' });
+            } else {
+              console.log('Grupo creado exitosamente');
+              res.json({ groupCode });
+            }
+          });
+        } else {
+          res.status(400).json({ error: 'No se encontró el profesor' });
+        }
+      });
+    });
+
+
+
+    // Cerrar la conexión cuando hayas terminado
+    app.on('close', () => {
+      db.close((error) => {
+        if (error) {
+          console.error('Error al cerrar la conexión con la base de datos SQLite:', error.message);
+        } else {
+          console.log('Conexión con la base de datos SQLite cerrada exitosamente');
+        }
+      });
+    });
+
+    function generateGroupCode() {
+      const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      const length = 6;
+      let code = '';
+
+      for (let i = 0; i < length; i++) {
+        const randomIndex = Math.floor(Math.random() * characters.length);
+        code += characters.charAt(randomIndex);
+      }
+
+      return code;
     }
-  });
-});
 
 
-
-// Cerrar la conexión cuando hayas terminado
-app.on('close', () => {
-  db.close((error) => {
-    if (error) {
-      console.error('Error al cerrar la conexión con la base de datos SQLite:', error.message);
-    } else {
-      console.log('Conexión con la base de datos SQLite cerrada exitosamente');
-    }
-  });
-});
-
-function generateGroupCode() {
-  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  const length = 6;
-  let code = '';
-
-  for (let i = 0; i < length; i++) {
-    const randomIndex = Math.floor(Math.random() * characters.length);
-    code += characters.charAt(randomIndex);
-  }
-
-  return code;
-}
-
-
-// Iniciar servidor
-app.listen(port, () => {
-  console.log(`Servidor en funcionamiento en http://localhost:${port}`);
-});
+    // Iniciar servidor
+    app.listen(port, () => {
+      console.log(`Servidor en funcionamiento en http://localhost:${port}`);
+    });

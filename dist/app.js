@@ -30,17 +30,7 @@ app.get('/student', (req, res) => {
     res.render('student', { title: 'Estudiante', username: username });
 });
 app.get('/teacher', (req, res) => {
-    console.log(req.body);
-    db.all(`SELECT codigo FROM grupos`, (error, rows) => {
-        if (error) {
-            console.error('Error al obtener los grupos:', error.message);
-            res.status(500).json({ error: 'Error al obtener los grupos' });
-        }
-        else {
-            const groups = rows.map((row) => row.codigo);
-            res.render('teacher', { title: 'Profesor', username: req.query.username, groupCode: req.query.groupCode, groups: groups });
-        }
-    });
+    res.render('teacher', { title: 'Profesor', username: req.query.username });
 });
 // Configuración de la base de datos SQLite
 const dbPath = path_1.default.join(__dirname, 'database.sqlite');
@@ -91,118 +81,147 @@ app.post('/register', (req, res) => {
         }
         else if (row) {
             // Si el usuario ya existe, enviar una respuesta con un mensaje de error
-            res.status(400).json({ error: 'El usuario ya existe' });
+            res.status(400).json({ error: 'El nombre de usuario ya está en uso' });
         }
         else {
-            // Insertar los datos en la tabla usuarios
+            // Si el usuario no existe, insertarlo en la base de datos
             db.run(`INSERT INTO usuarios (username, password, role) VALUES (?, ?, ?)`, [username, password, role], function (error) {
                 if (error) {
                     console.error('Error al insertar los datos:', error.message);
                     res.status(500).json({ error: 'Error al registrar el usuario' });
                 }
                 else {
-                    console.log('Datos insertados exitosamente');
-                    // Si el rol es "Profesor", crear un grupo
-                    if (role === 'Profesor') {
-                        const profesorId = this.lastID;
-                        const groupCode = generateGroupCode();
-                        // Insertar los datos en la tabla grupos
-                        db.run(`INSERT INTO grupos (codigo, profesor_id) VALUES (?, ?)`, [groupCode, profesorId], (error) => {
-                            if (error) {
-                                console.error('Error al insertar los datos del grupo:', error.message);
-                            }
-                            else {
-                                console.log('Grupo creado exitosamente');
-                            }
-                        });
+                    // Obtener el ID del usuario recién registrado
+                    const userId = this.lastID;
+                    // Redireccionar al usuario a la página correspondiente según su rol
+                    if (role === 'student') {
+                        res.redirect(`/student?username=${username}`);
                     }
-                    res.status(200).json({ message: 'Usuario registrado exitosamente' });
+                    else if (role === 'teacher') {
+                        res.redirect(`/teacher?username=${username}`);
+                    }
+                    else {
+                        res.status(400).json({ error: 'Rol de usuario no válido' });
+                    }
                 }
             });
         }
     });
 });
-// Ruta para iniciar sesión
-app.post('/', (req, res) => {
-    // Obtener los datos del formulario de inicio de sesión
+// Ruta para autenticar al usuario
+app.post('/login', (req, res) => {
     const { username, password } = req.body;
-    // Verificar si los datos existen en la base de datos
-    db.get(`SELECT role FROM usuarios WHERE username = ? AND password = ?`, [username, password], (error, row) => {
+    // Verificar las credenciales del usuario en la base de datos
+    db.get(`SELECT * FROM usuarios WHERE username = ? AND password = ?`, [username, password], (error, row) => {
         if (error) {
             console.error('Error al consultar los datos:', error.message);
             res.status(500).json({ error: 'Error al iniciar sesión' });
         }
         else if (row) {
-            const role = row.role;
-            // Redireccionar al usuario según su rol
-            if (role === 'Estudiante') {
-                res.redirect('/student');
+            // Si las credenciales son válidas, redireccionar al usuario a la página correspondiente según su rol
+            if (row.role === 'student') {
+                res.redirect(`/student?username=${username}`);
             }
-            else if (role === 'Profesor') {
-                res.redirect('/teacher');
+            else if (row.role === 'teacher') {
+                res.redirect(`/teacher?username=${username}`);
             }
             else {
-                res.status(401).json({ error: 'Rol de usuario inválido' });
+                res.status(400).json({ error: 'Rol de usuario no válido' });
             }
         }
         else {
+            // Si las credenciales no son válidas, enviar una respuesta con un mensaje de error
             res.status(401).json({ error: 'Credenciales inválidas' });
         }
     });
 });
-// Ruta para agregar un grupo de clase
+// Ruta para crear un grupo de clases
 app.post('/group', (req, res) => {
-    const { username, role } = req.body;
-    // Obtener el ID del profesor
-    db.get(`SELECT id FROM usuarios WHERE username = ?`, [username], (error, row) => {
+    const { username } = req.query;
+    // Verificar si el profesor existe en la base de datos y tiene el rol "Profesor"
+    db.get(`SELECT * FROM usuarios WHERE username = ? AND role = 'Profesor'`, [username], (error, row) => {
         if (error) {
-            console.error('Error al consultar el ID del profesor:', error.message);
+            console.error('Error al consultar los datos:', error.message);
             res.status(500).json({ error: 'Error al crear el grupo' });
         }
         else if (row) {
-            const profesorId = row.id;
-            // Generar un código de grupo aleatorio
-            const groupCode = generateGroupCode();
-            // Insertar los datos en la tabla grupos
-            db.run(`INSERT INTO grupos (codigo, profesor_id) VALUES (?, ?)`, [groupCode, profesorId], (error) => {
+            // Si el profesor existe, insertar el grupo en la base de datos
+            const groupCode = generateGroupCode(); // Generar un código de grupo aleatorio
+            db.run(`INSERT INTO grupos (codigo, profesor_id) VALUES (?, ?)`, [groupCode, row.id], function (error) {
                 if (error) {
-                    console.error('Error al insertar los datos del grupo:', error.message);
+                    console.error('Error al insertar los datos:', error.message);
                     res.status(500).json({ error: 'Error al crear el grupo' });
                 }
                 else {
-                    console.log('Grupo creado exitosamente');
-                    res.json({ groupCode });
+                    res.redirect(`/teacher?username=${username}`);
                 }
             });
         }
         else {
-            res.status(400).json({ error: 'No se encontró el profesor' });
+            // Si el profesor no existe o no tiene el rol "Profesor", enviar una respuesta con un mensaje de error
+            res.status(400).json({ error: 'No se encontró al profesor' });
         }
     });
 });
-// Cerrar la conexión cuando hayas terminado
-app.on('close', () => {
-    db.close((error) => {
+// Ruta para que un estudiante se una a un grupo de clases
+app.post('/join', (req, res) => {
+    const { username, code } = req.body;
+    // Verificar si el grupo existe en la base de datos
+    db.get(`SELECT * FROM grupos WHERE codigo = ?`, [code], (error, row) => {
         if (error) {
-            console.error('Error al cerrar la conexión con la base de datos SQLite:', error.message);
+            console.error('Error al consultar los datos:', error.message);
+            res.status(500).json({ error: 'Error al unirse al grupo' });
+        }
+        else if (row) {
+            // Obtener el ID del grupo
+            const groupId = row.id;
+            // Verificar si el estudiante existe en la base de datos
+            db.get(`SELECT * FROM usuarios WHERE username = ? AND role = 'student'`, [username], (error, row) => {
+                if (error) {
+                    console.error('Error al consultar los datos:', error.message);
+                    res.status(500).json({ error: 'Error al unirse al grupo' });
+                }
+                else if (row) {
+                    // Si el estudiante existe, actualizar el registro en la base de datos para unirse al grupo
+                    db.run(`UPDATE usuarios SET grupo_id = ? WHERE id = ?`, [groupId, row.id], function (error) {
+                        if (error) {
+                            console.error('Error al actualizar los datos:', error.message);
+                            res.status(500).json({ error: 'Error al unirse al grupo' });
+                        }
+                        else {
+                            res.redirect(`/student?username=${username}`);
+                        }
+                    });
+                }
+                else {
+                    // Si el estudiante no existe, enviar una respuesta con un mensaje de error
+                    res.status(400).json({ error: 'No se encontró al estudiante' });
+                }
+            });
         }
         else {
-            console.log('Conexión con la base de datos SQLite cerrada exitosamente');
+            // Si el grupo no existe, enviar una respuesta con un mensaje de error
+            res.status(400).json({ error: 'No se encontró el grupo' });
         }
     });
 });
+// Generar un código de grupo aleatorio
 function generateGroupCode() {
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    const length = 6;
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    const codeLength = 6;
     let code = '';
-    for (let i = 0; i < length; i++) {
+    for (let i = 0; i < codeLength; i++) {
         const randomIndex = Math.floor(Math.random() * characters.length);
-        code += characters.charAt(randomIndex);
+        code += characters[randomIndex];
     }
     return code;
 }
-// Iniciar servidor
+// Ruta para manejar todas las demás rutas no encontradas
+app.get('*', (req, res) => {
+    res.status(404).send('Página no encontrada');
+});
+// Iniciar el servidor en el puerto especificado
 app.listen(port, () => {
-    console.log(`Servidor en funcionamiento en http://localhost:${port}`);
+    console.log(`Servidor iniciado en http://localhost:${port}`);
 });
 //# sourceMappingURL=app.js.map

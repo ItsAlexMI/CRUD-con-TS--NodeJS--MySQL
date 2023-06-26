@@ -127,28 +127,11 @@
 
 <body class="bg-white">
 
-	<div class="flex min-h-screen">
-
-		<!-- Container -->
-		<div class="flex flex-row w-full">
-			<h1>Bienvenido, <%= username %>!</h1>
-		  
-			<h2>Tus grupos:</h2>
-			<ul>
-			  <% if (groups.length > 0) { %>
-				<% groups.forEach(function(group) { %>
-				  <li><%= group %></li>
-				<% }) %>
-			  <% } else { %>
-				<li>No tienes grupos</li>
-			  <% } %>
-			</ul>
-		  
-			<h2>Crea un nuevo grupo:</h2>
-			<button onclick="createGroup('<%= username %>')">Crear grupo</button>
-
-			<p id="group-code"></p>
-		  </div>
+	<h1>Bienvenido, <%= username %>!</h1>
+  <h2>Crea un grupo de clases</h2>
+  <form action="/group" method="post">
+    <button type="submit">Crear Grupo</button>
+  </form>
 		  
 		  <script>
 			// Burger menus
@@ -192,32 +175,5 @@
 			  }
 			});
 		  
-function createGroup(username) {
-  fetch('/group', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      username: username,
-      role: 'Profesor'
-    })
-  })
-    .then(response => response.json())
-    .then(response => {
-      if (response.error) {
-        console.error('Error al crear el grupo:', response.error);
-      } else {
-        const groupCodeElement = document.getElementById('group-code');
-        if (groupCodeElement) {
-          groupCodeElement.innerText = response.groupCode;
-        }
-      }
-    })
-    .catch(error => {
-      console.error('Error en la solicitud:', error.message);
-    });
-}
 
-		  </script>
 		  

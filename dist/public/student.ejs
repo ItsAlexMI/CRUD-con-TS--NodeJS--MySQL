@@ -143,48 +143,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
-<script>
-	function joinGroup() {
-	  const groupCode = document.getElementById('groupCodeInput').value;
 
-	  // Enviar una solicitud para unirse a un grupo de clases
-	  fetch('/join-group', {
-		method: 'POST',
-		headers: {
-		  'Content-Type': 'application/json'
-		},
-		body: JSON.stringify({
-		  username: '<%= username %>',
-		  role: 'Estudiante',
-		  groupCode: groupCode
-		})
-	  })
-	  .then(response => response.json())
-	  .then(data => {
-		console.log(data);
-		// Realizar alguna acción después de unirse exitosamente al grupo
-	  })
-	  .catch(error => {
-		console.error('Error en la solicitud:', error);
-		// Manejar errores de la solicitud
-	  });
-	}
-  </script>
 </head>
     <body class="bg-white">
-		<!DOCTYPE html>
-		<html>
-		<head>
-		  <title><%= title %></title>
-		</head>
-		<body>
-		  <h1>Bienvenido, <%= username %> (Estudiante)</h1>
-		
-		  <h2>Unirse a un grupo de clases:</h2>
-		  <input type="text" id="groupCodeInput" placeholder="Código del grupo">
-		  <button onclick="joinGroup()">Unirse</button>
-	 
-		</body>
-		</html>
-		
+		<h1>Bienvenido, <%= username %>!</h1>
+		<h2>Buscar y unirse a un grupo</h2>
+		<form action="/join-group" method="post">
+			<input type="hidden" name="username" value="<%= username %>">
+			<input type="text" name="groupname" placeholder="Nombre del grupo">
+			<button type="submit">Unirse al grupo</button>
+		  </form>
     </body>

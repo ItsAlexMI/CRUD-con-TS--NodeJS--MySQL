@@ -8,12 +8,20 @@ const server_1 = require("./models/server");
 const express_1 = __importDefault(require("express"));
 const sqlite3_1 = __importDefault(require("sqlite3"));
 const path_1 = __importDefault(require("path"));
+const body_parser_1 = __importDefault(require("body-parser"));
+const express_session_1 = __importDefault(require("express-session"));
 dotenv_1.default.config();
 const server = new server_1.Server();
 server.listen();
 const app = (0, express_1.default)();
 const port = 3000;
+app.use(body_parser_1.default.urlencoded({ extended: true }));
 app.use(express_1.default.json());
+app.use((0, express_session_1.default)({
+    secret: 'secret-key',
+    resave: false,
+    saveUninitialized: false
+}));
 // Configuración de Express
 app.set('views', path_1.default.join(__dirname, 'public')); // Establecer el directorio de vistas como "public"
 app.set('view engine', 'ejs'); // Establecer el motor de vistas como "ejs"
@@ -25,20 +33,32 @@ app.get('/register', (req, res) => {
     res.render('register', { title: 'Registro' });
 });
 app.get('/student', (req, res) => {
-    // Obtener el nombre de usuario correspondiente y asignarlo a la variable `username`
-    const username = req.query.username;
+    const username = req.session.username; // Obtener el nombre de usuario de la sesión
+    console.log('Valor de username en la sesión:', username);
     res.render('student', { title: 'Estudiante', username: username });
 });
 app.get('/teacher', (req, res) => {
-    console.log(req.body);
-    db.all(`SELECT codigo FROM grupos`, (error, rows) => {
+    const username = req.query.username;
+    const role = req.query.role;
+    console.log('Valores recibidos:', username, role);
+    // Configuración de la base de datos SQLite
+    const dbPath = path_1.default.join(__dirname, 'database.sqlite');
+    const db = new sqlite3_1.default.Database(dbPath, (error) => {
         if (error) {
-            console.error('Error al obtener los grupos:', error.message);
-            res.status(500).json({ error: 'Error al obtener los grupos' });
+            console.error('Error al conectar a la base de datos SQLite:', error.message);
+            res.status(500).json({ error: 'Error al conectar a la base de datos SQLite' });
         }
         else {
-            const groups = rows.map((row) => row.codigo);
-            res.render('teacher', { title: 'Profesor', username: req.query.username, groupCode: req.query.groupCode, groups: groups });
+            db.all(`SELECT codigo FROM grupos`, (error, rows) => {
+                if (error) {
+                    console.error('Error al obtener los grupos:', error.message);
+                    res.status(500).json({ error: 'Error al obtener los grupos' });
+                }
+                else {
+                    const groups = rows.map((row) => row.codigo);
+                    res.render('teacher', { title: 'Profesor', username: username, groups: groups, role: role });
+                }
+            });
         }
     });
 });
@@ -50,33 +70,34 @@ const db = new sqlite3_1.default.Database(dbPath, (error) => {
     }
     else {
         console.log('Conexión exitosa a la base de datos SQLite');
-    }
-});
-// Crear la tabla "usuarios" y "grupos" si no existen
-db.run(`CREATE TABLE IF NOT EXISTS usuarios (
+        // Crear la tabla "usuarios" y "grupos" si no existen
+        db.run(`CREATE TABLE IF NOT EXISTS usuarios (
       id INTEGER PRIMARY KEY,
       username TEXT,
       password TEXT,
       role TEXT
     )`, (error) => {
-    if (error) {
-        console.error('Error al crear la tabla usuarios:', error.message);
-    }
-    else {
-        console.log('Tabla usuarios creada exitosamente');
-    }
-});
-db.run(`CREATE TABLE IF NOT EXISTS grupos (
+            if (error) {
+                console.error('Error al crear la tabla usuarios:', error.message);
+            }
+            else {
+                console.log('Tabla usuarios creada exitosamente');
+            }
+        });
+        db.run(`CREATE TABLE IF NOT EXISTS grupos (
       id INTEGER PRIMARY KEY,
       codigo TEXT,
       profesor_id INTEGER,
+      estudiantes_ids TEXT,
       FOREIGN KEY (profesor_id) REFERENCES usuarios (id)
     )`, (error) => {
-    if (error) {
-        console.error('Error al crear la tabla grupos:', error.message);
-    }
-    else {
-        console.log('Tabla grupos creada exitosamente');
+            if (error) {
+                console.error('Error al crear la tabla grupos:', error.message);
+            }
+            else {
+                console.log('Tabla grupos creada exitosamente');
+            }
+        });
     }
 });
 // Ruta para registrar un usuario
@@ -134,12 +155,14 @@ app.post('/', (req, res) => {
         }
         else if (row) {
             const role = row.role;
+            // Establecer el nombre de usuario en la sesión
+            req.session.username = username;
             // Redireccionar al usuario según su rol
             if (role === 'Estudiante') {
                 res.redirect('/student');
             }
             else if (role === 'Profesor') {
-                res.redirect('/teacher');
+                res.redirect(`/teacher?username=${username}&role=${role}`);
             }
             else {
                 res.status(401).json({ error: 'Rol de usuario inválido' });
@@ -150,28 +173,44 @@ app.post('/', (req, res) => {
         }
     });
 });
+app.post('/student', (req, res) => {
+    // Obtener el nombre de usuario correspondiente y asignarlo a la variable `username`
+    const username = req.query.username;
+    // Obtener los grupos disponibles
+    db.all(`SELECT * FROM grupos`, (error, rows) => {
+        if (error) {
+            console.error('Error al obtener los grupos:', error.message);
+            res.status(500).json({ error: 'Error al obtener los grupos' });
+        }
+        else {
+            const groups = rows;
+            // Almacenar el valor de username en la sesión
+            req.session.username = username ? (Array.isArray(username) ? String(username[0]) : String(username)) : undefined;
+            res.render('student', { title: 'Estudiante', username: username, groups: groups, role: 'Estudiante' });
+        }
+    });
+});
 // Ruta para agregar un grupo de clase
 app.post('/group', (req, res) => {
-    const { username, role } = req.body;
+    const { username, role, groupname } = req.body;
+    console.log('Valores recibidos:', username, role, groupname);
     // Obtener el ID del profesor
-    db.get(`SELECT id FROM usuarios WHERE username = ?`, [username], (error, row) => {
+    db.get(`SELECT id FROM usuarios WHERE username = ? AND role = 'Profesor'`, [username], (error, row) => {
         if (error) {
             console.error('Error al consultar el ID del profesor:', error.message);
             res.status(500).json({ error: 'Error al crear el grupo' });
         }
         else if (row) {
             const profesorId = row.id;
-            // Generar un código de grupo aleatorio
-            const groupCode = generateGroupCode();
             // Insertar los datos en la tabla grupos
-            db.run(`INSERT INTO grupos (codigo, profesor_id) VALUES (?, ?)`, [groupCode, profesorId], (error) => {
+            db.run(`INSERT INTO grupos (codigo, profesor_id) VALUES (?, ?)`, [groupname, profesorId], (error) => {
                 if (error) {
                     console.error('Error al insertar los datos del grupo:', error.message);
                     res.status(500).json({ error: 'Error al crear el grupo' });
                 }
                 else {
                     console.log('Grupo creado exitosamente');
-                    res.json({ groupCode });
+                    res.redirect(`/teacher?username=${username}&role=${role}`);
                 }
             });
         }
@@ -188,6 +227,49 @@ app.on('close', () => {
         }
         else {
             console.log('Conexión con la base de datos SQLite cerrada exitosamente');
+        }
+    });
+});
+app.post('/join-group', (req, res) => {
+    const { groupname } = req.body;
+    const username = req.session && req.session.username ? req.session.username : '';
+    console.log(username, groupname);
+    // Obtener el ID del grupo
+    db.get(`SELECT id, estudiantes_ids FROM grupos WHERE codigo = ?`, [groupname], (error, row) => {
+        if (error) {
+            console.error('Error al consultar el ID del grupo:', error.message);
+            res.status(500).json({ error: 'Error al unirse al grupo' });
+        }
+        else if (row) {
+            const grupoId = row.id;
+            const estudiantesIds = row.estudiantes_ids || '';
+            const estudiantesIdsArray = estudiantesIds.split(',').filter(Boolean); // Convertir la cadena en un array de IDs
+            if (estudiantesIdsArray.includes(username)) {
+                // El estudiante ya está en el grupo
+                console.log('El estudiante ya está en el grupo');
+                res.redirect(`/student?username=${username}`);
+            }
+            else {
+                // Agregar el nuevo ID de estudiante a la lista
+                estudiantesIdsArray.push(username);
+                // Actualizar la tabla grupos con la nueva lista de IDs de estudiantes
+                const nuevaListaEstudiantesIds = estudiantesIdsArray.join(',');
+                db.run(`UPDATE grupos SET estudiantes_ids = ? WHERE id = ?`, [nuevaListaEstudiantesIds, grupoId], (error) => {
+                    if (error) {
+                        console.error('Error al actualizar los datos del grupo:', error.message);
+                        res.status(500).json({ error: 'Error al unirse al grupo' });
+                    }
+                    else {
+                        console.log('Estudiante unido al grupo exitosamente');
+                        // Almacenar el valor de username en la sesión
+                        req.session.username = username;
+                        res.redirect(`/student`);
+                    }
+                });
+            }
+        }
+        else {
+            res.status(400).json({ error: 'No se encontró el grupo' });
         }
     });
 });

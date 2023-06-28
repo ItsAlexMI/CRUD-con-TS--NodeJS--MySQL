@@ -235,6 +235,22 @@
       <button type="submit">Crear grupo</button>
     </form>
 
+
+    <h3>Asignar tarea</h3>
+    <form method="POST" action="/assign-task">
+        <label for="groupname">Nombre del grupo:</label>
+        <input type="text" id="groupname" name="groupname" required>
+        <br>
+        <label for="task">Tarea:</label>
+        <input type="text" id="task" name="task" required>
+        <br>
+        <label for="taskdescription">Descripción:</label>
+        <input type="text" id="taskdescription" name="taskdescription" required>
+        <br>
+        <input type="submit" value="Asignar tarea">
+    </form>
+    
+
     <script>
       // Burger menus
       document.addEventListener("DOMContentLoaded", function () {

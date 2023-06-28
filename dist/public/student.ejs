@@ -8,7 +8,7 @@
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio,line-clamp"></script>
     <title>TaskFlow</title>
     <!-- component -->
-<body class="bg-white">
+
 	<nav class="relative px-4 py-4 flex justify-between items-center bg-white">
 		<a class="text-3xl font-bold leading-none" href="#">
 			<svg class="h-10" alt="logo" viewBox="0 0 10240 10240">
@@ -99,7 +99,7 @@
 		</nav>
 	</div>
 
-</body>
+
 
 <script>
 // Burger menus
@@ -152,5 +152,31 @@ document.addEventListener('DOMContentLoaded', function() {
 			<input type="hidden" name="username" value="<%= username %>">
 			<input type="text" name="groupname" placeholder="Nombre del grupo">
 			<button type="submit">Unirse al grupo</button>
+		  </form>
+
+		  <h3>Tareas del Estudiante</h3>
+		  <% if (tasks.length > 0) { %>
+			<ul>
+			<% tasks.forEach(function(task) { %>
+			  <li>
+				<strong>Título:</strong> <%= task.titulo %><br>
+				<strong>Descripción:</strong> <%= task.descripcion %><br>
+				<strong>Código del Grupo:</strong> <%= task.codigo %><br>
+			  </li>
+			<% }) %>
+			</ul>
+		  <% } else { %>
+			<p>No hay tareas asignadas en los grupos.</p>
+		  <% } %>
+		
+		  <h3>Enviar Tarea</h3>
+		  <form method="POST" action="/submit-task">
+			<label for="taskId">ID de la Tarea:</label>
+			<input type="text" id="taskId" name="taskId" required>
+			<br>
+			<label for="solution">Solución:</label>
+			<textarea id="solution" name="solution" required></textarea>
+			<br>
+			<input type="submit" value="Enviar tarea">
 		  </form>
     </body>

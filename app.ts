@@ -73,17 +73,30 @@ app.get("/teacher", (req: Request, res: Response) => {
           res.status(500).json({ error: "Error al obtener los grupos" });
         } else {
           const groups: string[] = rows.map((row) => row.codigo);
-          res.render("teacher", {
-            title: "Profesor",
-            username: username,
-            groups: groups,
-            role: role,
+
+          // Obtener las tareas desde la base de datos
+          db.all("SELECT * FROM tareas", (error, tasks) => {
+            if (error) {
+              console.error("Error al obtener las tareas:", error.message);
+              res.status(500).json({ error: "Error al obtener las tareas" });
+              return;
+            }
+
+            // Renderizar la plantilla teacher.ejs con los datos de las tareas
+            res.render("teacher", {
+              title: "Profesor",
+              username: username,
+              groups: groups,
+              role: role,
+              tasks: tasks
+            });
           });
         }
       });
     }
   });
 });
+
 
 // Configuración de la base de datos SQLite
 const dbPath = path.join(__dirname, "database.sqlite");
@@ -455,6 +468,28 @@ app.post("/assign-task", (req: Request, res: Response) => {
       }
     }
   );
+});
+
+app.post("/delete-task", (req: Request, res: Response) => {
+  // Obtener el ID de la tarea a eliminar
+  const taskId = req.body.taskId;
+
+  // Verificar si el ID de la tarea está presente
+  if (!taskId) {
+    res.status(400).json({ error: "ID de tarea no proporcionado" });
+    return;
+  }
+
+  // Eliminar la tarea de la base de datos
+  db.run(`DELETE FROM tareas WHERE id = ?`, [taskId], (error) => {
+    if (error) {
+      console.error("Error al eliminar la tarea:", error.message);
+      res.status(500).json({ error: "Error al eliminar la tarea" });
+    } else {
+      console.log("Tarea eliminada exitosamente");
+      res.status(200).json({ message: "Tarea eliminada exitosamente" });
+    }
+  });
 });
 
 

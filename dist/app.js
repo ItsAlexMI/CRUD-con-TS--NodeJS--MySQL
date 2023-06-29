@@ -25,6 +25,60 @@ app.use((0, express_session_1.default)({
 // Configuración de Express
 app.set("views", path_1.default.join(__dirname, "public")); // Establecer el directorio de vistas como "public"
 app.set("view engine", "ejs"); // Establecer el motor de vistas como "ejs"
+// Ruta principal
+app.get("/", (req, res) => {
+    res.render("login", { title: "Inicio de sesión" });
+});
+app.get("/register", (req, res) => {
+    res.render("register", { title: "Registro" });
+});
+app.get("/student", (req, res) => {
+    const username = req.session.username; // Obtener el nombre de usuario de la sesión
+    console.log("Valor de username en la sesión:", username);
+    res.render("student", { title: "Estudiante", username: username });
+});
+app.get("/teacher", (req, res) => {
+    const username = req.query.username;
+    const role = req.query.role;
+    console.log("Valores recibidos:", username, role);
+    // Configuración de la base de datos SQLite
+    const dbPath = path_1.default.join(__dirname, "database.sqlite");
+    const db = new sqlite3_1.default.Database(dbPath, (error) => {
+        if (error) {
+            console.error("Error al conectar a la base de datos SQLite:", error.message);
+            res
+                .status(500)
+                .json({ error: "Error al conectar a la base de datos SQLite" });
+        }
+        else {
+            db.all(`SELECT codigo FROM grupos`, (error, rows) => {
+                if (error) {
+                    console.error("Error al obtener los grupos:", error.message);
+                    res.status(500).json({ error: "Error al obtener los grupos" });
+                }
+                else {
+                    const groups = rows.map((row) => row.codigo);
+                    // Obtener las tareas desde la base de datos
+                    db.all("SELECT * FROM tareas", (error, tasks) => {
+                        if (error) {
+                            console.error("Error al obtener las tareas:", error.message);
+                            res.status(500).json({ error: "Error al obtener las tareas" });
+                            return;
+                        }
+                        // Renderizar la plantilla teacher.ejs con los datos de las tareas
+                        res.render("teacher", {
+                            title: "Profesor",
+                            username: username,
+                            groups: groups,
+                            role: role,
+                            tasks: tasks
+                        });
+                    });
+                }
+            });
+        }
+    });
+});
 // Configuración de la base de datos SQLite
 const dbPath = path_1.default.join(__dirname, "database.sqlite");
 const db = new sqlite3_1.default.Database(dbPath, (error) => {
@@ -76,73 +130,6 @@ const db = new sqlite3_1.default.Database(dbPath, (error) => {
             }
         });
     }
-});
-// Ruta principal
-app.get("/", (req, res) => {
-    res.render("login", { title: "Inicio de sesión" });
-});
-app.get("/register", (req, res) => {
-    res.render("register", { title: "Registro" });
-});
-app.get("/student", (req, res, next) => {
-    const username = req.session.username; // Obtener el nombre de usuario de la sesión
-    console.log("Valor de username en la sesión:", username);
-    res.render("student", { title: "Estudiante", username: username });
-});
-app.get("/teacher", (req, res) => {
-    const username = req.query.username;
-    const role = req.query.role;
-    console.log("Valores recibidos:", username, role);
-    // Configuración de la base de datos SQLite
-    const dbPath = path_1.default.join(__dirname, "database.sqlite");
-    const db = new sqlite3_1.default.Database(dbPath, (error) => {
-        if (error) {
-            console.error("Error al conectar a la base de datos SQLite:", error.message);
-            res
-                .status(500)
-                .json({ error: "Error al conectar a la base de datos SQLite" });
-        }
-        else {
-            db.all(`SELECT codigo FROM grupos`, (error, rows) => {
-                if (error) {
-                    console.error("Error al obtener los grupos:", error.message);
-                    res.status(500).json({ error: "Error al obtener los grupos" });
-                }
-                else {
-                    const groups = rows.map((row) => row.codigo);
-                    res.render("teacher", {
-                        title: "Profesor",
-                        username: username,
-                        groups: groups,
-                        role: role,
-                    });
-                }
-            });
-        }
-    });
-});
-app.get("/student-tasks", (req, res) => {
-    const studentId = req.session.userId; // Obtener el ID del estudiante desde la sesión
-    // Obtener todos los grupos del estudiante
-    db.all(`SELECT g.id, g.codigo, g.profesor_id FROM grupos g JOIN estudiantes e ON e.grupo_id = g.id WHERE e.estudiante_id = ?`, [studentId], (error, rows) => {
-        if (error) {
-            console.error("Error al obtener los grupos del estudiante:", error.message);
-            res.status(500).json({ error: "Error al obtener los grupos del estudiante" });
-        }
-        else {
-            const groupIds = rows.map((row) => row.id); // Obtener los IDs de los grupos
-            // Obtener todas las tareas de los grupos del estudiante
-            db.all(`SELECT t.id, t.titulo, t.descripcion, g.codigo FROM tareas t JOIN grupos g ON t.grupo_id = g.id WHERE t.grupo_id IN (${groupIds.map(() => "?").join(",")})`, groupIds, (error, tareaRows) => {
-                if (error) {
-                    console.error("Error al obtener las tareas del estudiante:", error.message);
-                    res.status(500).json({ error: "Error al obtener las tareas del estudiante" });
-                }
-                else {
-                    res.render("student-tasks", { tasks: tareaRows });
-                }
-            });
-        }
-    });
 });
 // Ruta para registrar un usuario
 app.post("/register", (req, res) => {
@@ -285,7 +272,7 @@ app.on("close", () => {
         }
     });
 });
-app.post("/join-group", (req, res, next) => {
+app.post("/join-group", (req, res) => {
     const { groupname } = req.body;
     const username = req.session && req.session.username ? req.session.username : "";
     console.log(username, groupname);
@@ -356,22 +343,23 @@ app.post("/assign-task", (req, res) => {
         }
     });
 });
-app.post("/submit-task", (req, res) => {
-    const { taskId, solution } = req.body;
-    const studentId = req.session.userId; // Obtener el ID del estudiante desde la sesión
-    // Verificar si la tarea existe y pertenece a uno de los grupos del estudiante
-    db.get(`SELECT t.id, t.titulo, t.descripcion, g.codigo FROM tareas t JOIN grupos g ON t.grupo_id = g.id JOIN estudiantes e ON e.grupo_id = g.id WHERE t.id = ? AND e.estudiante_id = ?`, [taskId, studentId], (error, tareaRow) => {
+app.post("/delete-task", (req, res) => {
+    // Obtener el ID de la tarea a eliminar
+    const taskId = req.body.taskId;
+    // Verificar si el ID de la tarea está presente
+    if (!taskId) {
+        res.status(400).json({ error: "ID de tarea no proporcionado" });
+        return;
+    }
+    // Eliminar la tarea de la base de datos
+    db.run(`DELETE FROM tareas WHERE id = ?`, [taskId], (error) => {
         if (error) {
-            console.error("Error al obtener la tarea del estudiante:", error.message);
-            res.status(500).json({ error: "Error al obtener la tarea del estudiante" });
-        }
-        else if (tareaRow) {
-            // Guardar la solución de la tarea en la base de datos o realizar alguna acción adicional
-            console.log("Tarea enviada exitosamente");
-            res.status(200).json({ message: "Tarea enviada exitosamente" });
+            console.error("Error al eliminar la tarea:", error.message);
+            res.status(500).json({ error: "Error al eliminar la tarea" });
         }
         else {
-            res.status(400).json({ error: "No se encontró la tarea o no pertenece a los grupos del estudiante" });
+            console.log("Tarea eliminada exitosamente");
+            res.status(200).json({ message: "Tarea eliminada exitosamente" });
         }
     });
 });

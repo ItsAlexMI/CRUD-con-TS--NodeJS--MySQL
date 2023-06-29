@@ -250,7 +250,25 @@
         <input type="submit" value="Asignar tarea">
     </form>
     
-
+    <h2>Tareas activas</h2>
+    <% if (tasks.length > 0) { %>
+      <ul>
+        <% tasks.forEach(function(task) { %>
+          <li>
+            <strong>Título:</strong> <%= task.titulo %><br>
+            <strong>Descripción:</strong> <%= task.descripcion %><br>
+            <strong>Código del Grupo:</strong> <%= task.codigo %><br>
+            <form action="/delete-task" method="POST">
+              <input type="hidden" name="taskId" value="<%= task.id %>">
+              <button type="submit">Borrar tarea</button>
+            </form>
+          </li>
+        <% }) %>
+      </ul>
+    <% } else { %>
+      <p>No hay tareas asignadas en los grupos.</p>
+    <% } %>
+    
     <script>
       // Burger menus
       document.addEventListener("DOMContentLoaded", function () {

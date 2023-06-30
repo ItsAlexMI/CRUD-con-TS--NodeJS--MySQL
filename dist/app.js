@@ -10,8 +10,10 @@ const sqlite3_1 = __importDefault(require("sqlite3"));
 const path_1 = __importDefault(require("path"));
 const body_parser_1 = __importDefault(require("body-parser"));
 const express_session_1 = __importDefault(require("express-session"));
+const nodemailer_1 = __importDefault(require("nodemailer"));
 const mail_1 = __importDefault(require("@sendgrid/mail"));
-mail_1.default.setApiKey(" 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");
+const multer_1 = __importDefault(require("multer"));
+mail_1.default.setApiKey("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");
 dotenv_1.default.config();
 const server = new server_1.Server();
 server.listen();
@@ -20,10 +22,21 @@ const port = 3000;
 app.use(body_parser_1.default.urlencoded({ extended: true }));
 app.use(express_1.default.json());
 app.use((0, express_session_1.default)({
+    name: "mySession",
     secret: "secret-key",
     resave: false,
-    saveUninitialized: false,
+    saveUninitialized: true,
 }));
+// Configurar el almacenamiento del archivo adjunto utilizando Multer
+const storage = multer_1.default.diskStorage({
+    destination: "./uploads",
+    filename: (req, file, callback) => {
+        const extension = path_1.default.extname(file.originalname);
+        const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+        callback(null, uniqueSuffix + extension);
+    }
+});
+const upload = (0, multer_1.default)({ storage: storage });
 // Configuración de Express
 app.set("views", path_1.default.join(__dirname, "public")); // Establecer el directorio de vistas como "public"
 app.set("view engine", "ejs"); // Establecer el motor de vistas como "ejs"
@@ -63,16 +76,16 @@ app.get("/confirmar", (req, res) => {
     });
 });
 app.get("/student", (req, res) => {
-    const username = req.session.username; // Obtener el nombre de usuario de la sesión
+    const username = req.session.username;
+    const email = req.session.email;
     const role = req.query.role;
     console.log("Valor de username en la sesión:", username);
+    console.log("Correo electrónico del estudiante:", email);
     const dbPath = path_1.default.join(__dirname, "database.sqlite");
     const db = new sqlite3_1.default.Database(dbPath, (error) => {
         if (error) {
             console.error("Error al conectar a la base de datos SQLite:", error.message);
-            res
-                .status(500)
-                .json({ error: "Error al conectar a la base de datos SQLite" });
+            res.status(500).json({ error: "Error al conectar a la base de datos SQLite" });
         }
         else {
             db.all(`SELECT codigo FROM grupos`, (error, rows) => {
@@ -89,10 +102,11 @@ app.get("/student", (req, res) => {
                             res.status(500).json({ error: "Error al obtener las tareas" });
                             return;
                         }
-                        // Renderizar la plantilla teacher.ejs con los datos de las tareas
+                        // Renderizar la plantilla student.ejs con los datos de las tareas
                         res.render("student", {
-                            title: "Profesor",
+                            title: "Estudiante",
                             username: username,
+                            email: email,
                             groups: groups,
                             role: role,
                             tasks: tasks
@@ -155,13 +169,13 @@ const db = new sqlite3_1.default.Database(dbPath, (error) => {
         console.log("Conexión exitosa a la base de datos SQLite");
         // Crear la tabla "usuarios" y "grupos" si no existen
         db.run(`CREATE TABLE IF NOT EXISTS usuarios (
-      id INTEGER PRIMARY KEY,
-      username TEXT,
-      password TEXT,
-      email TEXT,
-      role TEXT,
-      verified INTEGER DEFAULT 0
-    )`, (error) => {
+        id INTEGER PRIMARY KEY,
+        username TEXT,
+        password TEXT,
+        email TEXT,
+        role TEXT,
+        verified INTEGER DEFAULT 0
+      )`, (error) => {
             if (error) {
                 console.error("Error al crear la tabla usuarios:", error.message);
             }
@@ -170,12 +184,11 @@ const db = new sqlite3_1.default.Database(dbPath, (error) => {
             }
         });
         db.run(`CREATE TABLE IF NOT EXISTS grupos (
-      id INTEGER PRIMARY KEY,
-      codigo TEXT,
-      profesor_id INTEGER,
-      estudiantes_ids TEXT,
-      FOREIGN KEY (profesor_id) REFERENCES usuarios (id)
-    )`, (error) => {
+        id INTEGER PRIMARY KEY,
+        codigo TEXT,
+        profesor_id INTEGER,
+        FOREIGN KEY (profesor_id) REFERENCES usuarios (id)
+      )`, (error) => {
             if (error) {
                 console.error("Error al crear la tabla grupos:", error.message);
             }
@@ -183,18 +196,20 @@ const db = new sqlite3_1.default.Database(dbPath, (error) => {
                 console.log("Tabla grupos creada exitosamente");
             }
         });
-        db.run(`CREATE TABLE tareas (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  titulo TEXT NOT NULL,
-  descripcion TEXT,
-  grupo_id INTEGER,
-  FOREIGN KEY (grupo_id) REFERENCES grupos (id)
-    )`, (error) => {
+        db.run(`CREATE TABLE IF NOT EXISTS tareas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        titulo TEXT NOT NULL,
+        descripcion TEXT,
+        grupo_id INTEGER,
+        profesor_email TEXT,
+        FOREIGN KEY (grupo_id) REFERENCES grupos (id),
+        FOREIGN KEY (profesor_email) REFERENCES usuarios (email)
+      )`, (error) => {
             if (error) {
-                console.error("Error al crear la tabla grupos:", error.message);
+                console.error("Error al crear la tabla tareas:", error.message);
             }
             else {
-                console.log("Tabla grupos creada exitosamente");
+                console.log("Tabla tareas creada exitosamente");
             }
         });
     }
@@ -450,6 +465,59 @@ app.post("/delete-task", (req, res) => {
         else {
             console.log("Tarea eliminada exitosamente");
             res.status(200).json({ message: "Tarea eliminada exitosamente" });
+        }
+    });
+});
+app.post("/submit-task", upload.single("archivo"), (req, res) => {
+    const { taskId, textolibre } = req.body;
+    const file = req.file;
+    // Obtener el correo electrónico del estudiante desde su sesión o cualquier otra fuente
+    const studentEmail = req.body.email;
+    console.log("Correo electrónico del estudiante:", studentEmail);
+    // Obtener la información del profesor que subió la tarea
+    db.get(`SELECT email as profesor_email FROM tareas 
+    INNER JOIN usuarios ON tareas.profesor_email = usuarios.email 
+    WHERE tareas.id = ?`, [taskId], (error, row) => {
+        if (error) {
+            console.error("Error al obtener la información del profesor:", error.message);
+            res.status(500).json({ error: "Error al enviar la tarea" });
+        }
+        else if (!row || !row.profesor_email) {
+            console.log("No se encontró la tarea especificada");
+            res.status(400).json({ error: "No se encontró la tarea especificada" });
+        }
+        else {
+            const professorEmail = row.profesor_email; // Obtener el correo electrónico del profesor
+            console.log("Correo electrónico del profesor:", professorEmail);
+            // Configurar el transporte de correo electrónico
+            const transporter = nodemailer_1.default.createTransport({
+            // Configura los detalles del transporte de correo (por ejemplo, SMTP)
+            // Consulta la documentación de Nodemailer para obtener más información
+            });
+            // Crea el correo electrónico a enviar
+            const correoElectronico = {
+                from: studentEmail,
+                to: professorEmail,
+                subject: "Tarea enviada",
+                text: `Se ha enviado una tarea. Descripción adicional: ${textolibre}`,
+                attachments: [
+                    {
+                        filename: file.originalname,
+                        path: file.path
+                    }
+                ]
+            };
+            // Envía el correo electrónico
+            transporter.sendMail(correoElectronico, (error, info) => {
+                if (error) {
+                    console.error("Error al enviar el correo electrónico:", error);
+                    res.status(500).json({ error: "Error al enviar la tarea" });
+                }
+                else {
+                    console.log("Correo electrónico enviado:", info.response);
+                    res.status(200).json({ message: "Tarea enviada exitosamente" });
+                }
+            });
         }
     });
 });

@@ -164,10 +164,16 @@ document.addEventListener('DOMContentLoaded', function() {
             <strong>Título:</strong> <%= task.titulo %><br>
             <strong>Descripción:</strong> <%= task.descripcion %><br>
             <strong>Código del Grupo:</strong> <%= task.grupo_id %><br>
-            <form action="/delete-task" method="POST">
-              <input type="hidden" name="taskId" value="<%= task.id %>">
-              <input type="file" name="archivo" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv" />
-            </form>
+			<form action="/submit-task" method="POST">
+				<input type="hidden" name="taskId" value="<%= task.id %>">
+				<input type="hidden" name="professorEmail" value="<%= task.profesor_email %>">
+				<input type="hidden" name="email" value="<%= email %>">
+
+				<textarea type="text" name="textolibre" placeholder="Texto libre"></textarea>
+				<input type="file" name="archivo" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv" />
+				<button type="submit">Enviar</button>
+			  </form>
+			  
           </li>
         <% }) %>
       </ul>

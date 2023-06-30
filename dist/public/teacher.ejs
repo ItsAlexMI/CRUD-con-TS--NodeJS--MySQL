@@ -32,7 +32,7 @@
         class="hidden absolute top-1/2 left-1/2 transform -translate-y-1/2 -translate-x-1/2 lg:flex lg:mx-auto lg:flex lg:items-center lg:w-auto lg:space-x-6"
       >
         <li>
-          <a class="text-sm text-gray-400 hover:text-gray-500" href="#">Home</a>
+          <a class="text-sm text-gray-400 hover:text-gray-500" href="/teacher?username=<%= username %>&role=Profesor">Home</a>
         </li>
         <li class="text-gray-300">
           <svg
@@ -51,7 +51,7 @@
           </svg>
         </li>
         <li>
-          <a class="text-sm text-blue-600 font-bold" href="#">About Us</a>
+          <a class="text-sm text-blue-600 font-bold" href="/asignarTareas?username=<%= username %>&role=Profesor">About Us</a>
         </li>
         <li class="text-gray-300">
           <svg
@@ -70,7 +70,7 @@
           </svg>
         </li>
         <li>
-          <a class="text-sm text-gray-400 hover:text-gray-500" href="#"
+          <a class="text-sm text-gray-400 hover:text-gray-500" href="/tareasActivas?username=<%= username %>&role=Profesor"
             >Services</a
           >
         </li>
@@ -260,58 +260,127 @@
         }
       });
     </script>
-  </head>
+  <style>
+    body {
+      background-color: #f6f9fc;
+      font-family: 'Roboto', sans-serif;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .title {
+      color: #2c5282;
+      font-size: 28px;
+      font-weight: bold;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .form-input {
+      border: 2px solid #a0aec0;
+      border-radius: 4px;
+      padding: 10px;
+      margin-bottom: 10px;
+      width: 100%;
+      box-sizing: border-box;
+      transition: border-color 0.3s ease;
+    }
+    .form-input:focus {
+      outline: none;
+      border-color: #4a5568;
+      box-shadow: 0 0 0 2px rgba(74, 85, 104, 0.2);
+    }
+    .form-button {
+      background-color: #4a5568;
+      color: #ffffff;
+      border: none;
+      border-radius: 4px;
+      padding: 10px 20px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    .form-button:hover {
+      background-color: #2c3847;
+    }
+    .task-list {
+      list-style-type: none;
+      padding: 0;
+    }
+    .task-item {
+      background-color: #ffffff;
+      border-radius: 4px;
+      padding: 20px;
+      margin-bottom: 20px;
+      transition: transform 0.3s ease;
+    }
+    .task-item:hover {
+      transform: scale(1.02);
+    }
+    .task-title {
+      color: #2c5282;
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    .task-description {
+      color: #4a5568;
+      margin-bottom: 10px;
+    }
+    .task-form {
+      margin-top: 20px;
+    }
+    .task-form label {
+      display: block;
+      color: #4a5568;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    .task-form input[type="text"] {
+      border: 2px solid #a0aec0;
+      border-radius: 4px;
+      padding: 10px;
+      margin-bottom: 10px;
+      width: 100%;
+      box-sizing: border-box;
+      transition: border-color 0.3s ease;
+    }
+    .task-form input[type="text"]:focus {
+      outline: none;
+      border-color: #4a5568;
+      box-shadow: 0 0 0 2px rgba(74, 85, 104, 0.2);
+    }
+    .task-form input[type="submit"] {
+      background-color: #4a5568;
+      color: #ffffff;
+      border: none;
+      border-radius: 4px;
+      padding: 10px 20px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    .task-form input[type="submit"]:hover {
+      background-color: #2c3847;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 class="title">¡Bienvenido, <%= username %>!</h1>
 
-  <body class="bg-white">
-    <h1>Bienvenido, <%= username %>!</h1>
-    <h2>Crea un grupo de clases</h2>
-    <form action="/group" method="POST">
-      <input type="hidden" name="username" value="<%= username %>" />
-      <input type="hidden" name="role" value="<%= role %>" />
-      <input
-        type="text"
-        name="groupname"
-        placeholder="Nombre del grupo"
-        required
-      />
-      <button type="submit">Crear grupo</button>
-    </form>
+    <div>
+      <h2 class="title">Crea un grupo de clases</h2>
+      <form action="/group" method="POST">
+        <input type="hidden" name="username" value="<%= username %>">
+        <input type="hidden" name="role" value="<%= role %>">
+        <input type="text" name="groupname" placeholder="Nombre del grupo" class="form-input" required>
+        <button type="submit" class="form-button">Crear grupo</button>
+      </form>
+    </div>
 
-
-    <h3>Asignar tarea</h3>
-    <form method="POST" action="/assign-task">
-      <input type="hidden" name="username" value="<%= username %>">
-        <label for="groupname">Nombre del grupo:</label>
-        <input type="text" id="groupname" name="groupname" required>
-        <br>
-        <label for="task">Tarea:</label>
-        <input type="text" id="task" name="task" required>
-        <br>
-        <label for="taskdescription">Descripción:</label>
-        <input type="text" id="taskdescription" name="taskdescription" required>
-        <br>
-        <input type="submit" value="Asignar tarea">
-    </form>
     
-    <h2>Tareas activas</h2>
-    <% if (tasks.length > 0) { %>
-      <ul>
-        <% tasks.forEach(function(task) { %>
-          <li>
-            <strong>Título:</strong> <%= task.titulo %><br>
-            <strong>Descripción:</strong> <%= task.descripcion %><br>
-            <strong>Código del Grupo:</strong> <%= task.grupo_id %><br>
-            <form action="/delete-task" method="POST">
-              <input type="hidden" name="taskId" value="<%= task.id %>">
-              <button type="submit">Borrar tarea</button>
-            </form>
-          </li>
-        <% }) %>
-      </ul>
-    <% } else { %>
-      <p>No hay tareas asignadas en los grupos.</p>
-    <% } %>
     
-
-  </body>
+</body>
 </html>

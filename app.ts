@@ -47,6 +47,102 @@ app.get("/", (req: Request, res: Response) => {
   res.render("login", { title: "Inicio de sesión" });
 });
 
+app.get("/tareasActivas",   (req: Request, res: Response) => {
+  const username = req.query.username;
+  const role = req.query.role;
+  console.log("Valores recibidos:", username, role);
+  // Configuración de la base de datos SQLite
+  const dbPath = path.join(__dirname, "database.sqlite");
+
+  const db = new sqlite3.Database(dbPath, (error) => {
+    if (error) {
+      console.error(
+        "Error al conectar a la base de datos SQLite:",
+        error.message
+      );
+      res
+        .status(500)
+        .json({ error: "Error al conectar a la base de datos SQLite" });
+    } else {
+      db.all<{ codigo: string }>(`SELECT codigo FROM grupos`, (error, rows) => {
+        if (error) {
+          console.error("Error al obtener los grupos:", error.message);
+          res.status(500).json({ error: "Error al obtener los grupos" });
+        } else {
+          const groups: string[] = rows.map((row) => row.codigo);
+
+          // Obtener las tareas desde la base de datos
+          db.all("SELECT * FROM tareas", (error, tasks) => {
+            if (error) {
+              console.error("Error al obtener las tareas:", error.message);
+              res.status(500).json({ error: "Error al obtener las tareas" });
+              return;
+            }
+
+            // Renderizar la plantilla teacher.ejs con los datos de las tareas
+            res.render("tareasActivas", {
+              title: "Profesor",
+              username: username,
+              groups: groups,
+              role: role,
+              tasks: tasks
+            });
+          });
+        }
+      });
+    }
+  });
+});
+
+app.get("/asignarTareas",   (req: Request, res: Response) => {
+  const username = req.query.username;
+  const role = req.query.role;
+  console.log("Valores recibidos:", username, role);
+  // Configuración de la base de datos SQLite
+  const dbPath = path.join(__dirname, "database.sqlite");
+
+  const db = new sqlite3.Database(dbPath, (error) => {
+    if (error) {
+      console.error(
+        "Error al conectar a la base de datos SQLite:",
+        error.message
+      );
+      res
+        .status(500)
+        .json({ error: "Error al conectar a la base de datos SQLite" });
+    } else {
+      db.all<{ codigo: string }>(`SELECT codigo FROM grupos`, (error, rows) => {
+        if (error) {
+          console.error("Error al obtener los grupos:", error.message);
+          res.status(500).json({ error: "Error al obtener los grupos" });
+        } else {
+          const groups: string[] = rows.map((row) => row.codigo);
+
+          // Obtener las tareas desde la base de datos
+          db.all("SELECT * FROM tareas", (error, tasks) => {
+            if (error) {
+              console.error("Error al obtener las tareas:", error.message);
+              res.status(500).json({ error: "Error al obtener las tareas" });
+              return;
+            }
+
+            // Renderizar la plantilla teacher.ejs con los datos de las tareas
+            res.render("asignarTareas", {
+              title: "Profesor",
+              username: username,
+              groups: groups,
+              role: role,
+              tasks: tasks
+            });
+          });
+        }
+      });
+    }
+  });
+});
+
+
+
 app.get("/register", (req: Request, res: Response) => {
   res.render("register", { title: "Registro" });
 });
@@ -86,15 +182,10 @@ app.get("/confirmar", (req: Request, res: Response) => {
   );
 });
 
-
-app.get("/student", (req: Request<any, any, any, CustomSessionData>, res: Response) => {
+app.get("/tareasActivasStudents", (req: Request<any, any, any, CustomSessionData>, res: Response) => {
   const username = req.session.username;
-  const email = req.session.email;
-
   const role = req.query.role;
-
   console.log("Valor de username en la sesión:", username);
-  console.log("Correo electrónico del estudiante:", email);
 
   const dbPath = path.join(__dirname, "database.sqlite");
 
@@ -110,23 +201,93 @@ app.get("/student", (req: Request<any, any, any, CustomSessionData>, res: Respon
         } else {
           const groups: string[] = rows.map((row) => row.codigo);
 
-          // Obtener las tareas desde la base de datos
-          db.all("SELECT * FROM tareas", (error, tasks) => {
+          // Realizar la consulta para obtener los correos electrónicos de los estudiantes
+          db.all<UsuarioRow>(`SELECT email FROM usuarios WHERE role = 'Estudiante'`, (error, studentRows) => {
             if (error) {
-              console.error("Error al obtener las tareas:", error.message);
-              res.status(500).json({ error: "Error al obtener las tareas" });
-              return;
-            }
+              console.error("Error al obtener los correos electrónicos de los estudiantes:", error.message);
+              res.status(500).json({ error: "Error al obtener los correos electrónicos de los estudiantes" });
+            } else {
+              const students: string[] = studentRows.map((row) => row.email);
 
-            // Renderizar la plantilla student.ejs con los datos de las tareas
-            res.render("student", {
-              title: "Estudiante",
-              username: username,
-              email: email,
-              groups: groups,
-              role: role,
-              tasks: tasks
-            }); 
+              // Obtener las tareas desde la base de datos
+              db.all("SELECT * FROM tareas", (error, tasks) => {
+                if (error) {
+                  console.error("Error al obtener las tareas:", error.message);
+                  res.status(500).json({ error: "Error al obtener las tareas" });
+                  return;
+                }
+
+                // Renderizar la plantilla student.ejs con los datos de las tareas
+                res.render("tareasActivasStudents", {
+                  title: "Estudiante",
+                  username: username,
+                  email: students,
+                  groups: groups,
+                  role: role,
+                  tasks: tasks,
+                  students: students
+                }); 
+  console.log("Estudiantes disponibles:", students);
+                
+              });
+            }
+          });
+        }
+      });
+    }
+  });
+});
+
+
+app.get("/student", (req: Request<any, any, any, CustomSessionData>, res: Response) => {
+  const username = req.session.username;
+  const role = req.query.role;
+  console.log("Valor de username en la sesión:", username);
+
+  const dbPath = path.join(__dirname, "database.sqlite");
+
+  const db = new sqlite3.Database(dbPath, (error) => {
+    if (error) {
+      console.error("Error al conectar a la base de datos SQLite:", error.message);
+      res.status(500).json({ error: "Error al conectar a la base de datos SQLite" });
+    } else {
+      db.all<{ codigo: string }>(`SELECT codigo FROM grupos`, (error, rows) => {
+        if (error) {
+          console.error("Error al obtener los grupos:", error.message);
+          res.status(500).json({ error: "Error al obtener los grupos" });
+        } else {
+          const groups: string[] = rows.map((row) => row.codigo);
+
+          // Realizar la consulta para obtener los correos electrónicos de los estudiantes
+          db.all<UsuarioRow>(`SELECT email FROM usuarios WHERE role = 'Estudiante'`, (error, studentRows) => {
+            if (error) {
+              console.error("Error al obtener los correos electrónicos de los estudiantes:", error.message);
+              res.status(500).json({ error: "Error al obtener los correos electrónicos de los estudiantes" });
+            } else {
+              const students: string[] = studentRows.map((row) => row.email);
+
+              // Obtener las tareas desde la base de datos
+              db.all("SELECT * FROM tareas", (error, tasks) => {
+                if (error) {
+                  console.error("Error al obtener las tareas:", error.message);
+                  res.status(500).json({ error: "Error al obtener las tareas" });
+                  return;
+                }
+
+                // Renderizar la plantilla student.ejs con los datos de las tareas
+                res.render("student", {
+                  title: "Estudiante",
+                  username: username,
+                  email: students,
+                  groups: groups,
+                  role: role,
+                  tasks: tasks,
+                  students: students
+                }); 
+  console.log("Estudiantes disponibles:", students);
+                
+              });
+            }
           });
         }
       });
@@ -202,8 +363,7 @@ const db = new sqlite3.Database(dbPath, (error) => {
         username TEXT,
         password TEXT,
         email TEXT,
-        role TEXT,
-        verified INTEGER DEFAULT 0
+        role TEXT
       )`,
       (error) => {
         if (error) {
@@ -255,6 +415,10 @@ const db = new sqlite3.Database(dbPath, (error) => {
 interface UsuarioRow {
   role: string;
   id: number;
+  username: string;
+  password: string;
+  email: string;
+  verified: number;
 
   // Otras propiedades de la fila si las hay
 }
@@ -391,33 +555,40 @@ app.post("/student", (req: Request, res: Response) => {
   const username = req.body.username;
   
   // Obtener el correo electrónico del estudiante
-  const email = req.body.email;
+  const email = req.session.email;
+  console.log("Valor del correo electrónico del estudiante:", email);
 
   // Obtener los grupos disponibles
-  db.all<GrupoRow>(`SELECT * FROM grupos`, (error, rows) => {
+  db.all<GrupoRow>(`
+  SELECT grupos.*
+  FROM grupos
+  INNER JOIN usuarios ON grupos.id = usuarios.grupo_id
+  WHERE usuarios.email = ?
+`, [email], (error, rows) => {
     if (error) {
       console.error("Error al obtener los grupos:", error.message);
       res.status(500).json({ error: "Error al obtener los grupos" });
     } else {
       const groups: GrupoRow[] = rows;
-
+  
       // Almacenar el valor de username en la sesión
       req.session.username = username
         ? Array.isArray(username)
           ? String(username[0])
           : String(username)
         : undefined;
-
+  
       // Almacenar el correo electrónico en la sesión
       req.session.email = email
         ? Array.isArray(email)
           ? String(email[0])
           : String(email)
         : undefined;
-
+  
       console.log("Valor de username en la sesión:", req.session.username);
       console.log("Correo electrónico del estudiante:", req.session.email);
-
+      console.log("Valor del correo electrónico del estudiante:", email);
+  
       res.render("student", {
         title: "Estudiante",
         username: username,
@@ -629,66 +800,74 @@ app.post("/delete-task", (req: Request, res: Response) => {
 
 
 
-app.post("/submit-task", upload.single("archivo"), (req: Request, res: Response) => {
+app.post("/submit-task", upload.single("archivo"), async (req: Request, res: Response) => {
   const { taskId, textolibre } = req.body;
-  const file = req.file as Express.Multer.File;
+  const file = req.file;
 
-  // Obtener el correo electrónico del estudiante desde su sesión o cualquier otra fuente
-  const studentEmail = req.session.email;
+  // Obtener el correo electrónico del estudiante seleccionado en el formulario
+  const studentEmail = req.body.studentEmail;
 
   console.log("Correo electrónico del estudiante:", studentEmail);
+  console.log(taskId, textolibre);
 
-  // Obtener la información del profesor que subió la tarea
-  db.get(
-    `SELECT email as profesor_email FROM tareas 
-    INNER JOIN usuarios ON tareas.profesor_email = usuarios.email 
-    WHERE tareas.id = ?`,
-    [taskId],
-    (error, row: { profesor_email: string }) => {
-      if (error) {
-        console.error("Error al obtener la información del profesor:", error.message);
-        res.status(500).json({ error: "Error al enviar la tarea" });
-      } else if (!row || !row.profesor_email) {
-        console.log("No se encontró la tarea especificada");
-        res.status(400).json({ error: "No se encontró la tarea especificada" });
-      } else {
-        const professorEmail = row.profesor_email as string; // Obtener el correo electrónico del profesor
+  try {
+    // Obtener la información del profesor que subió la tarea
+    const row: { profesor_email: string } = await new Promise((resolve, reject) => {
+      db.get(
+        `SELECT email as profesor_email FROM tareas 
+        INNER JOIN usuarios ON tareas.profesor_email = usuarios.email 
+        WHERE tareas.id = ?`,
+        [taskId],
+        (error, row: { profesor_email: string }) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve(row);
+          }
+        }
+      );
+    });
 
-        console.log("Correo electrónico del profesor:", professorEmail);
+    if (!row || !row.profesor_email) {
+      console.log("No se encontró la tarea especificada");
+      return res.status(400).json({ error: "No se encontró la tarea especificada" });
+    }
 
-        // Configurar el transporte de correo electrónico
-        const transporter = nodemailer.createTransport({
-          // Configura los detalles del transporte de correo (por ejemplo, SMTP)
-          // Consulta la documentación de Nodemailer para obtener más información
-        });
+    const professorEmail = row.profesor_email; // Obtener el correo electrónico del profesor
 
-        // Crea el correo electrónico a enviar
-        const correoElectronico = {
-          from: studentEmail,
-          to: professorEmail,
-          subject: "Tarea enviada",
-          text: `Se ha enviado una tarea. Descripción adicional: ${textolibre}`,
-          attachments: [
+    console.log("Correo electrónico del profesor:", professorEmail);
+
+    // Configurar el transporte de correo electrónico
+    const transporter = nodemailer.createTransport({
+      // Configura los detalles del transporte de correo (por ejemplo, SMTP)
+      // Consulta la documentación de Nodemailer para obtener más información
+    });
+
+    // Crea el correo electrónico a enviar
+    const correoElectronico = {
+      from: studentEmail,
+      to: professorEmail,
+      subject: "Tarea enviada",
+      text: `Se ha enviado una tarea. Descripción adicional: ${textolibre}`,
+      attachments: file
+        ? [
             {
               filename: file.originalname,
               path: file.path
             }
           ]
-        };
+        : []
+    };
 
-        // Envía el correo electrónico
-        transporter.sendMail(correoElectronico, (error, info) => {
-          if (error) {
-            console.error("Error al enviar el correo electrónico:", error);
-            res.status(500).json({ error: "Error al enviar la tarea" });
-          } else {
-            console.log("Correo electrónico enviado:", info.response);
-            res.status(200).json({ message: "Tarea enviada exitosamente" });
-          }
-        });
-      }
-    }
-  );
+    // Envía el correo electrónico
+    const info = await transporter.sendMail(correoElectronico);
+
+    console.log("Correo electrónico enviado:", info.response);
+    res.status(200).json({ message: "Tarea enviada exitosamente" });
+  } catch (error) {
+    console.error("Error al enviar el correo electrónico:", error);
+    res.status(500).json({ error: "Error al enviar la tarea" });
+  }
 });
 
 

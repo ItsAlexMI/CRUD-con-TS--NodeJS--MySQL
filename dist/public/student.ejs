@@ -24,7 +24,7 @@
 			</button>
 		</div>
 		<ul class="hidden absolute top-1/2 left-1/2 transform -translate-y-1/2 -translate-x-1/2 lg:flex lg:mx-auto lg:flex lg:items-center lg:w-auto lg:space-x-6">
-			<li><a class="text-sm text-gray-400 hover:text-gray-500" href="#">Home</a></li>
+			<li><a class="text-sm text-gray-400 hover:text-gray-500" href="/student">Home</a></li>
 			<li class="text-gray-300">
 				<svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" class="w-4 h-4 current-fill" viewBox="0 0 24 24">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v0m0 7v0m0 7v0m0-13a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
@@ -144,41 +144,126 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
+<style>
+    body {
+      background-color: #f6f9fc;
+      font-family: 'Roboto', sans-serif;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .title {
+      color: #2c5282;
+      font-size: 28px;
+      font-weight: bold;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .form-input {
+      border: 2px solid #a0aec0;
+      border-radius: 4px;
+      padding: 10px;
+      margin-bottom: 10px;
+      width: 100%;
+      box-sizing: border-box;
+      transition: border-color 0.3s ease;
+    }
+    .form-input:focus {
+      outline: none;
+      border-color: #4a5568;
+      box-shadow: 0 0 0 2px rgba(74, 85, 104, 0.2);
+    }
+    .form-button {
+      background-color: #4a5568;
+      color: #ffffff;
+      border: none;
+      border-radius: 4px;
+      padding: 10px 20px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    .form-button:hover {
+      background-color: #2c3847;
+    }
+    .task-list {
+      list-style-type: none;
+      padding: 0;
+    }
+    .task-item {
+      background-color: #ffffff;
+      border-radius: 4px;
+      padding: 20px;
+      margin-bottom: 20px;
+      transition: transform 0.3s ease;
+    }
+    .task-item:hover {
+      transform: scale(1.02);
+    }
+    .task-title {
+      color: #2c5282;
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    .task-description {
+      color: #4a5568;
+      margin-bottom: 10px;
+    }
+    .task-group {
+      color: #718096;
+      margin-bottom: 10px;
+    }
+    .task-form {
+      margin-top: 20px;
+    }
+    .task-select {
+      border: 2px solid #a0aec0;
+      border-radius: 4px;
+      padding: 10px;
+      margin-bottom: 10px;
+      width: 100%;
+      box-sizing: border-box;
+      transition: border-color 0.3s ease;
+    }
+    .task-select:focus {
+      outline: none;
+      border-color: #4a5568;
+      box-shadow: 0 0 0 2px rgba(74, 85, 104, 0.2);
+    }
+    .task-textarea {
+      border: 2px solid #a0aec0;
+      border-radius: 4px;
+      padding: 10px;
+      margin-bottom: 10px;
+      width: 100%;
+      box-sizing: border-box;
+      resize: vertical;
+      transition: border-color 0.3s ease;
+    }
+    .task-textarea:focus {
+      outline: none;
+      border-color: #4a5568;
+      box-shadow: 0 0 0 2px rgba(74, 85, 104, 0.2);
+    }
+  </style>
 </head>
-    <body class="bg-white">
-		<h1>Bienvenido, <%= username %>!</h1>
-		<h2>Buscar y unirse a un grupo</h2>
-		<form action="/join-group" method="post">
-			<input type="hidden" name="username" value="<%= username %>">
-			<input type="text" name="groupname" placeholder="Nombre del grupo">
-			<button type="submit">Unirse al grupo</button>
-		  </form>
+<body>
+  <div class="container">
+    <h1 class="title">¡Bienvenido, <%= username %>!</h1>
 
+    <div>
+      <h2 class="title">Buscar y unirse a un grupo</h2>
+      <form action="/join-group" method="post">
+        <input type="hidden" name="username" value="<%= username %>">
+        <input type="text" name="groupname" placeholder="Nombre del grupo" class="form-input">
+        <button type="submit" class="form-button">Unirse al grupo</button>
+      </form>
+    </div>
 
-		  
-		  <h2>Tareas activas</h2>
-    <% if (tasks.length > 0) { %>
-      <ul>
-        <% tasks.forEach(function(task) { %>
-          <li>
-            <strong>Título:</strong> <%= task.titulo %><br>
-            <strong>Descripción:</strong> <%= task.descripcion %><br>
-            <strong>Código del Grupo:</strong> <%= task.grupo_id %><br>
-			<form action="/submit-task" method="POST">
-				<input type="hidden" name="taskId" value="<%= task.id %>">
-				<input type="hidden" name="professorEmail" value="<%= task.profesor_email %>">
-				<input type="hidden" name="email" value="<%= email %>">
-
-				<textarea type="text" name="textolibre" placeholder="Texto libre"></textarea>
-				<input type="file" name="archivo" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv" />
-				<button type="submit">Enviar</button>
-			  </form>
-			  
-          </li>
-        <% }) %>
-      </ul>
-    <% } else { %>
-      <p>No hay tareas asignadas en los grupos.</p>
-    <% } %>
-
-    </body>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/2.8.2/alpine.js"></script>
+</body>
+</html>

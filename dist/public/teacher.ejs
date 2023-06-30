@@ -238,6 +238,7 @@
 
     <h3>Asignar tarea</h3>
     <form method="POST" action="/assign-task">
+      <input type="hidden" name="username" value="<%= username %>">
         <label for="groupname">Nombre del grupo:</label>
         <input type="text" id="groupname" name="groupname" required>
         <br>
@@ -257,7 +258,7 @@
           <li>
             <strong>Título:</strong> <%= task.titulo %><br>
             <strong>Descripción:</strong> <%= task.descripcion %><br>
-            <strong>Código del Grupo:</strong> <%= task.codigo %><br>
+            <strong>Código del Grupo:</strong> <%= task.grupo_id %><br>
             <form action="/delete-task" method="POST">
               <input type="hidden" name="taskId" value="<%= task.id %>">
               <button type="submit">Borrar tarea</button>

@@ -80,12 +80,20 @@
                 class="flex px-3 py-2 md:px-4 md:py-3 border-2 border-black rounded-lg font-medium placeholder:font-normal" id="password" />
               <input type="password" placeholder="Confirm password"
                 class="flex px-3 py-2 md:px-4 md:py-3 border-2 border-black rounded-lg font-medium placeholder:font-normal" id="confirmPassword" />
+              
+                <input type="email" placeholder="Email" class="flex px-3 py-2 md:px-4 md:py-3 border-2 border-black rounded-lg font-medium placeholder:font-normal" id="email" />
+
               <select class="flex px-3 py-2 md:px-4 md:py-3 border-2 border-black rounded-lg font-medium" id="role">
                 <option disabled selected>Elige una opción</option>
                 <option>Profesor</option>
                 <option>Estudiante</option>
               </select>
-              <button class="flex items-center justify-center flex-none px-3 py-2 md:px-4 md:py-3 border-2 rounded-lg font-medium border-black bg-black text-white" onclick="registerUser()">Registrarme</button>
+              <button class="flex items-center justify-center flex-none px-3 py-2 md:px-4 md:py-3 border-2 rounded-lg font-medium border-black bg-black text-white" onclick="sendConfirmationEmail()">Confirmar</button>
+
+
+                <input type="text" placeholder="Código de confirmación" class="flex px-3 py-2 md:px-4 md:py-3 border-2 border-black rounded-lg font-medium placeholder:font-normal" id="confirmationCode" />
+                <button class="flex items-center justify-center flex-none px-3 py-2 md:px-4 md:py-3 border-2 rounded-lg font-medium border-black bg-black text-white" onclick="confirmRegistration()">Registrarme</button>
+
             </div>
           </div>
   
@@ -95,11 +103,48 @@
     </div>
 
     <script>
-      function registerUser() {
+      function sendConfirmationEmail() {
+        const email = document.getElementById('email').value;
+    
+        // Validar el campo de correo electrónico
+        if (email.trim() === '') {
+          alert('Ingrese un email válido');
+          return;
+        }
+    
+        // Enviar los datos al servidor mediante una solicitud HTTP
+        fetch('/send-confirmation-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            email: email
+          })
+        })
+          .then(response => {
+            if (response.ok) {
+              // Correo de confirmación enviado exitosamente
+              alert('Correo de confirmación enviado');
+              document.getElementById('confirmationSection').style.display = 'block';
+            } else {
+              // Mostrar mensaje de error si hay un problema con el envío del correo
+              response.json().then(data => alert(data.error));
+            }
+          })
+          .catch(error => {
+            console.error('Error en la solicitud:', error);
+            // Manejar errores de la solicitud
+          });
+      }
+    
+      function confirmRegistration() {
         const username = document.getElementById('username').value;
         const password = document.getElementById('password').value;
         const confirmPassword = document.getElementById('confirmPassword').value;
         const role = document.getElementById('role').value;
+        const email = document.getElementById('email').value;
+        const confirmationCode = document.getElementById('confirmationCode').value;
     
         // Validar los campos (puedes agregar más validaciones según tus necesidades)
         if (username.trim() === '') {
@@ -114,12 +159,20 @@
           alert('Las contraseñas no coinciden');
           return;
         }
+        if (email.trim() === '') {
+          alert('Ingrese un email válido');
+          return;
+        }
         if (role === '') {
           alert('Seleccione un rol válido');
           return;
         }
+        if (confirmationCode.trim() === '') {
+          alert('Ingrese un código de confirmación válido');
+          return;
+        }
     
-        // Enviar los datos al servidor mediante una solicitud HTTP (puedes usar fetch, axios, etc.)
+        // Enviar los datos al servidor mediante una solicitud HTTP
         fetch('/register', {
           method: 'POST',
           headers: {
@@ -128,22 +181,25 @@
           body: JSON.stringify({
             username: username,
             password: password,
-            role: role
+            email: email,
+            role: role,
+            confirmationCode: confirmationCode
           })
         })
-        .then(response => {
-          if (response.ok) {
-            // Registro exitoso
-            alert('Usuario registrado exitosamente');
-          } else {
-            // Mostrar mensaje de error si el usuario ya existe
-            response.json().then(data => alert(data.error));
-          }
-        })
-        .catch(error => {
-          console.error('Error en la solicitud:', error);
-          // Manejar errores de la solicitud
-        });
+          .then(response => {
+            if (response.ok) {
+              // Registro exitoso
+              alert('Usuario registrado exitosamente');
+              location.reload();
+            } else {
+              // Mostrar mensaje de error si hay un problema con el registro
+              response.json().then(data => alert(data.error));
+            }
+          })
+          .catch(error => {
+            console.error('Error en la solicitud:', error);
+            // Manejar errores de la solicitud
+          });
       }
     </script>
     

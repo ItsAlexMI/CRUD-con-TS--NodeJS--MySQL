@@ -87,7 +87,7 @@ app.get("/confirmar", (req: Request, res: Response) => {
 });
 
 
-app.get("/student", (req: Request & { session: CustomSessionData }, res: Response) => {
+app.get("/student", (req: Request<any, any, any, CustomSessionData>, res: Response) => {
   const username = req.session.username;
   const email = req.session.email;
 
@@ -126,8 +126,7 @@ app.get("/student", (req: Request & { session: CustomSessionData }, res: Respons
               groups: groups,
               role: role,
               tasks: tasks
-          
-            });
+            }); 
           });
         }
       });
@@ -269,6 +268,8 @@ interface GrupoRow {
 interface CustomSessionData extends SessionData {
   username?: string;
   email?: string;
+  role?: string;
+
 }
 
 interface GrupoRow {
@@ -279,6 +280,7 @@ interface GrupoRow {
 declare module "express-session" {
   interface SessionData {
     username?: string;
+    email?: string;
   }
 }
 
@@ -386,7 +388,10 @@ app.post("/", (req: Request, res: Response) => {
 
 app.post("/student", (req: Request, res: Response) => {
   // Obtener el nombre de usuario correspondiente y asignarlo a la variable `username`
-  const username = req.query.username;
+  const username = req.body.username;
+  
+  // Obtener el correo electrónico del estudiante
+  const email = req.body.email;
 
   // Obtener los grupos disponibles
   db.all<GrupoRow>(`SELECT * FROM grupos`, (error, rows) => {
@@ -403,15 +408,29 @@ app.post("/student", (req: Request, res: Response) => {
           : String(username)
         : undefined;
 
+      // Almacenar el correo electrónico en la sesión
+      req.session.email = email
+        ? Array.isArray(email)
+          ? String(email[0])
+          : String(email)
+        : undefined;
+
+      console.log("Valor de username en la sesión:", req.session.username);
+      console.log("Correo electrónico del estudiante:", req.session.email);
+
       res.render("student", {
         title: "Estudiante",
         username: username,
+        email: email,
         groups: groups,
         role: "Estudiante",
       });
     }
   });
 });
+
+
+
 
 // Ruta para agregar un grupo de clase
 app.post("/group", (req: Request, res: Response) => {
@@ -615,7 +634,7 @@ app.post("/submit-task", upload.single("archivo"), (req: Request, res: Response)
   const file = req.file as Express.Multer.File;
 
   // Obtener el correo electrónico del estudiante desde su sesión o cualquier otra fuente
-  const studentEmail = req.body.email;
+  const studentEmail = req.session.email;
 
   console.log("Correo electrónico del estudiante:", studentEmail);
 

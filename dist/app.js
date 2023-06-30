@@ -299,7 +299,9 @@ app.post("/", (req, res) => {
 });
 app.post("/student", (req, res) => {
     // Obtener el nombre de usuario correspondiente y asignarlo a la variable `username`
-    const username = req.query.username;
+    const username = req.body.username;
+    // Obtener el correo electrónico del estudiante
+    const email = req.body.email;
     // Obtener los grupos disponibles
     db.all(`SELECT * FROM grupos`, (error, rows) => {
         if (error) {
@@ -314,9 +316,18 @@ app.post("/student", (req, res) => {
                     ? String(username[0])
                     : String(username)
                 : undefined;
+            // Almacenar el correo electrónico en la sesión
+            req.session.email = email
+                ? Array.isArray(email)
+                    ? String(email[0])
+                    : String(email)
+                : undefined;
+            console.log("Valor de username en la sesión:", req.session.username);
+            console.log("Correo electrónico del estudiante:", req.session.email);
             res.render("student", {
                 title: "Estudiante",
                 username: username,
+                email: email,
                 groups: groups,
                 role: "Estudiante",
             });
@@ -472,7 +483,7 @@ app.post("/submit-task", upload.single("archivo"), (req, res) => {
     const { taskId, textolibre } = req.body;
     const file = req.file;
     // Obtener el correo electrónico del estudiante desde su sesión o cualquier otra fuente
-    const studentEmail = req.body.email;
+    const studentEmail = req.session.email;
     console.log("Correo electrónico del estudiante:", studentEmail);
     // Obtener la información del profesor que subió la tarea
     db.get(`SELECT email as profesor_email FROM tareas 
